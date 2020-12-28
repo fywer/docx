@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Upload Files</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />    
+    <link rel="stylesheet" href="../static/css/jquery.mobile.min.css" />
+    <link rel="stylesheet" href="../static/css/jquery.mobile.theme.min.css" />
+    <script src="../static/js/jquery.min.js"></script>
+    <script src="../static/js/jquery.mobile.min.js"></script>
+</head>
+    <body>
+        <!--Página Principal-->
+        <div data-role="page" id="list_files">
+            <!--Encabezado-->
+            <header data-role="header" data-theme="b">
+                <h1>Online Files</h1>
+            </header>
+            <!--Menu-->
+                <nav data-role="navbar">
+                <ul>
+                    <li><a href="#list_files" data-icon="bullets">Views Files</a></li>
+                    <li><a href="#upload_file" data-icon="action">Upload File</a></li>
+                </ul>
+            </nav>             
+            <!--Contenido-->
+            <main data-role="content" >
+                <ul data-inset="inside" data-role="listview" data-filter="true"  id="listview_files">
+                </ul>
+            </main>
+            <!--Pie de la página-->        
+            <footer style="text-align:center" data-role="footer" data-theme="b" data-position="fixed" >
+                <small>2019 &copy; company </small>
+                <br />
+                <small>Todos los derechos reservados.</small>
+            </footer>
+        </div>
+        <!--Página Cargar Archivo-->
+        <div data-role="page" id="upload_file">
+            <!--Encabezado-->
+            <header data-role="header" data-theme="b">
+                <h1>Upload File</h1>
+            </header>
+            <!--Menu-->
+            <nav data-role="navbar">
+                <ul>
+                    <li><a href="#list_files" data-icon="bullets">List of files</a></li>
+                    <li><a href="#upload_file" data-icon="action">Upload file</a></li>
+                </ul>
+            </nav> 
+            <!--Contenido-->
+            <section data-role="content">
+                <form id="form_agregarfile" data-ajax="false">
+                    <input type="file" accept="application/pdf" id="bton_cargarfile"/>
+                    <input type="submit" value="Upload" data-theme="b" form="form_agregarfile" />
+                </form>
+            </section>
+        </div>
+        <!--Página Documento-->
+        <div data-role="page" id="view_file">
+            <!--Encabezado-->
+            <header data-role="header" data-theme="b">
+                <a href="#list_files" data-icon="back">Back</a>
+                <h1>File</h1>
+            </header>
+            <!--Contenido-->
+            <section data-role="content" id="sect_viewfile">
+            </section>
+            <!--Pie de la página-->     
+            <footer style="text-align:center" data-role="footer" data-theme="b" data-position="fixed" >
+                <input data-role="button" data-icon="delete" type="submit" id="bton_eliminarfile" value="Delete"/>
+            </footer>
+        </div>
+        <script src="../static/js/main.js"></script>
+    </body>
+</html>
