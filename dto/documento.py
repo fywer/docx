@@ -28,12 +28,12 @@ class DocumentoDto(Resource):
             return None
     
     def delete(self, id): 
-        for meta in self.documentos:
-            if id == meta["id"]:
+        for metadoc in self.documentos:
+            if id == metadoc["id"]:
                 try:
                     sqlquery = f"delete from t_documento where id = {id};"
-                    os.remove(os.path.join(self.url_absoluta, meta["nombre"]))
-                    del(meta) #libera
+                    os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
+                    del(metadoc) #libera
                     self.cursor.execute(sqlquery)
                     self.db.commit()               
                     return {"msg": "El documento ha sido eliminado."}, 201
@@ -48,14 +48,14 @@ class DocumentoDto(Resource):
                 sqlquery = f"select * from t_documento;"
                 self.cursor.execute(sqlquery)
                 rows = self.cursor.fetchall() 
-                self.documentos = list()
+                self.documentos.clear()
                 documento = {}
                 for fila in rows:
                     documento["id"] = fila[0]
                     documento["nombre"] = fila[1]
                     documento["tipo"] = fila[2]
-                    documento["ruta"] = fila[3]
-                    documento["tamanio"] = fila[4]
+                    documento["tamanio"] = fila[3]
+                    documento["ruta"] = fila[4]
                     #documento["fecha"] = str(fila[5])
                     self.documentos.append(documento)
                     documento = {}
@@ -64,22 +64,22 @@ class DocumentoDto(Resource):
                 self.log.warn("ERROR: {0}\n".format(e))
                 return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500
         else:
-            for meta in self.documentos:
-                if id == meta["id"]:
+            for metadoc in self.documentos:
+                if id == metadoc["id"]:
                     documento = {
-                        'id' : meta['id'],
-                        'nombre' : meta['nombre'],
-                        'tipo' : meta['tipo'],
-                        'ruta' : meta['ruta'],
-                        'tamanio' : meta['tamanio']
+                        'id' : metadoc['id'],
+                        'nombre' : metadoc['nombre'],
+                        'tipo' : metadoc['tipo'],
+                        'ruta' : metadoc['ruta'],
+                        'tamanio' : metadoc['tamanio']
                         #'fecha' : str(meta['fecha'])
                     }
-                    return documento, 200
+                    return documento
             return {"msg" : "El documento no ha sido encontrado."}, 404
 
     def post(self):
         try:
-            metadatos = request.get_json(force=True)
+            metadatos = request.json
             pdf = base64.b64decode(metadatos["contenido"])
         except Exception as e:
             self.log.warn("ERROR: {0}\n".format(e))
@@ -96,10 +96,13 @@ class DocumentoDto(Resource):
                 "ruta": os.path.join(self.url_relativa, metadatos["nombre"])
             }
             uri = os.path.join(self.url_absoluta, documento["nombre"])
+            if os.path.isfile(uri):
+                return {"msg": "El documento ya existe."}, 409
             with open(uri, "wb") as f:
                 f.write(pdf)
             documento['ruta'] = documento['ruta'].replace("\\", "/")
-            sqlquery = f"insert into t_documento (id, nombre, tipo, ruta, tamanio) values ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
+            sqlquery = f"insert into t_documento (id, nombre, tipo, ruta, tamanio) " 
+            sqlquery += f"values ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
             self.cursor.execute(sqlquery)
             self.db.commit()
             self.documentos.append(documento)

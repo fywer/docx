@@ -1,0 +1,15 @@
+{% extends 'index.html' %}
+{% block view %}
+    <section class="container-fluid" id="page_view">
+        <div class="list-group">
+        </div>
+    </section>
+    <!-- Modal para desplegar documento -->
+    <div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+            </div>
+        </div>
+    </div>
+    <script type="module" src="../static/js/controller/view.js"></script>
+{% endblock %}
