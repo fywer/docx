@@ -1,8 +1,9 @@
 from flask import request
 from flask_restful import Resource
-import os, base64, datetime
+import time
+import os, base64
 import queue
-from .conexion import MySQL
+from .conexion import SQLServer
 import logging, sys
 
 logging.basicConfig(
@@ -10,44 +11,92 @@ logging.basicConfig(
     format = '%(levelname)7s %(message)s',
     stream = sys.stderr 
 )
+class DocumentoDAO:
+    def __init__(self):
+        #self.db = MySQL()
+        self.db = SQLServer()
+        self.cursor = self.db.cursor()
 
-class DocumentoDto(Resource):
+    def insert(self, documento):
+        #sqlcount = f"select count(*) from t_documento"
+        #self.cursor.execute(sqlcount)
+        #rows = self.cursor.fetchall()
+        
+            #sqlquery = f"insert into t_documento (id, nombre, tipo, ruta, tamanio) " 
+            #sqlquery += f"values ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
+            
+        sqlquery = f"insert into t_documento (nombre, tipo, ruta, tamanio) " 
+        sqlquery += f"values ('{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
+        self.cursor.execute(sqlquery)
+        self.db.commit()
+
+    def delete(self, id):
+        sqlquery = f"delete from t_documento where id = {id};"
+        self.cursor.execute(sqlquery)
+        self.db.commit()
+
+    def select(self, id=False):
+        if id == False:
+            sqlquery = f"select * from t_documento;"
+            self.cursor.execute(sqlquery)
+            rows = self.cursor.fetchall()
+            return rows
+        else:
+            pass        
+
+class DocumentoBO(Resource):
     url_absoluta = os.path.join(os.getcwd(), "server", "static", "pdf")
     url_relativa = os.path.join("static", "pdf")
     documentos = list()
+    documentodao = DocumentoDAO()
     log = logging.getLogger('')
 
     def __init__(self):
         try:
             if not os.path.isdir(self.url_absoluta):
                 os.mkdir(self.url_absoluta, 0o777)
-            self.db = MySQL()
-            self.cursor = self.db.cursor()
+
         except Exception as e:
             self.log.warn("ERROR: {0}\n".format(e))
             return None
     
-    def delete(self, id): 
+    @classmethod
+    def getdocumentodao(cls):
+        return cls.documentodao
+
+    def setNombre(self, tipo):
+        ahora = time.localtime()
+        fecha = "{0}{1}{2}-{3}{4}{5}".format(ahora.tm_year, ahora.tm_mon, ahora.tm_mday, ahora.tm_hour, ahora.tm_min, ahora.tm_sec)
+        if tipo == 'jpeg':
+            return 'IMG-{}.jpg'.format(fecha)
+        if tipo == 'png':
+            return 'IMG-{}.png'.format(fecha)
+        if tipo == 'mp4' :
+            return 'VID-{}.mp4'.format(fecha)
+
+    def delete (self, id): 
         for metadoc in self.documentos:
             if id == metadoc["id"]:
                 try:
-                    sqlquery = f"delete from t_documento where id = {id};"
-                    os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
-                    del(metadoc) #libera
-                    self.cursor.execute(sqlquery)
-                    self.db.commit()               
-                    return {"msg": "El documento ha sido eliminado."}, 201
+                    try:
+                        self.getdocumentodao().delete(id) 
+                        os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
+                        del(metadoc) #libera
+                        return {"msg": "El documento ha sido eliminado."}, 201
+                    except Exception as e:
+                        self.log.warn("ERROR DB: {0}\n".format(e))
+                        return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500
+
                 except Exception as e:
                     self.log.warn("ERROR: {0}\n".format(e))
                     return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500
+        
         return {"msg" : "El documento no ha sido encontrado."}, 404
 
     def get(self, id=False):
         if id == False:
             try:
-                sqlquery = f"select * from t_documento;"
-                self.cursor.execute(sqlquery)
-                rows = self.cursor.fetchall() 
+                rows = self.getdocumentodao().select() 
                 self.documentos.clear()
                 documento = {}
                 for fila in rows:
@@ -85,28 +134,29 @@ class DocumentoDto(Resource):
             self.log.warn("ERROR: {0}\n".format(e))
             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500
         try:
-            sqlcount = f"select count(*) from t_documento"
-            self.cursor.execute(sqlcount)
-            rows = self.cursor.fetchall() 
+            tipo = metadatos["tipo"].split('/')[1]
+            if tipo != 'png' and tipo != 'jpeg' and tipo != 'mp4' :
+                return {"msg" : "El formato no ha sido aceptado."}, 406 
             documento = {
-                "id": rows[0][0] + 1,
-                "nombre" : metadatos["nombre"],
-                "tipo": metadatos["tipo"],
+                #"id": rows[0][0] + 1,
+                "nombre" : self.setNombre(tipo),
+                "tipo": tipo,
                 "tamanio": metadatos["tamanio"],
-                "ruta": os.path.join(self.url_relativa, metadatos["nombre"])
+                "ruta": os.path.join(self.url_relativa, self.setNombre(tipo))
             }
             uri = os.path.join(self.url_absoluta, documento["nombre"])
             if os.path.isfile(uri):
                 return {"msg": "El documento ya existe."}, 409
-            with open(uri, "wb") as f:
-                f.write(pdf)
             documento['ruta'] = documento['ruta'].replace("\\", "/")
-            sqlquery = f"insert into t_documento (id, nombre, tipo, ruta, tamanio) " 
-            sqlquery += f"values ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
-            self.cursor.execute(sqlquery)
-            self.db.commit()
-            self.documentos.append(documento)
-            return {"msg" : "El documento ha sido guardado."}, 201
+            try:   
+                self.getdocumentodao().insert(documento)
+                self.documentos.append(documento)
+                with open(uri, "wb") as f:
+                    f.write(pdf) #Por definir
+                return {"msg" : "El documento ha sido guardado."}, 201
+            except Exception as e:
+                self.log.warn("ERROR BD: {0}\n".format(e))
+                return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500
         except Exception as e:
             self.log.warn("ERROR: {0}\n".format(e))
             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico"}, 500

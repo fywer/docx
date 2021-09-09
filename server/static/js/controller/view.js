@@ -7,7 +7,7 @@ const createItemModalHeader = (nombre) => {
     let modalHeader = document.createElement('div');
     modalHeader.setAttribute('class', 'modal-header');
     let modalTitle = document.createElement('h5');
-    modalTitle.setAttribute('class', 'modal-title');
+    modalTitle.setAttribute('class', 'modal-title' );
     modalTitle.appendChild(document.createTextNode(nombre));
     modalHeader.appendChild(modalTitle);
     let buttonClose = document.createElement('button');
@@ -18,14 +18,24 @@ const createItemModalHeader = (nombre) => {
     modalHeader.appendChild(buttonClose);
     return modalHeader;
 }
-const createItemModalBody = (ruta) => {
+const createItemModalBody = (ruta, tipo) => {
     let modalBody = document.createElement('div');
     modalBody.setAttribute('class', 'modal-body');
-    let itemFrameFile = document.createElement('iframe');
-    itemFrameFile.setAttribute('style', `height: ${window.innerHeight}px; width: 100%;`);
-    itemFrameFile.setAttribute('src', ruta);
-    modalBody.appendChild(itemFrameFile);
-    modalBody.appendChild(itemFrameFile);
+    if (tipo == 'jpeg' || tipo == 'png') {
+        let itemFrameFile = document.createElement('img');
+        itemFrameFile.setAttribute('class', "img-fluid");
+        itemFrameFile.setAttribute('src', ruta);
+        modalBody.appendChild(itemFrameFile);
+    } else if (tipo == 'mp4') {
+        let itemRatio = document.createElement('div');
+        itemRatio.setAttribute('class', 'ratio ratio-16x9');
+
+        let itemFrameFile = document.createElement('iframe');
+        itemFrameFile.setAttribute('src', ruta);
+        itemFrameFile.setAttribute('allowfullscreen', 'allowfullscreen');
+        itemRatio.appendChild(itemFrameFile);
+        modalBody.appendChild(itemRatio);
+    } else return -1;
     return modalBody;
 }
 const createItemModalFooter = (id) => {
@@ -50,11 +60,15 @@ const createItemModalFooter = (id) => {
     return modalFooter;
 }
 const pageviewfile = (file) => {
-    const modalContent = document.querySelector(".modal-content");
+    const modalContent = document.querySelector  (".modal-content");
     util.componentCleaner(modalContent);
-    let modalHeader = createItemModalHeader(file.getNombre);
-    modalContent.appendChild(modalHeader);
-    let modalBody = createItemModalBody(file.getRuta);
+    //let modalHeader = createItemModalHeader(file.getNombre);
+    //modalContent.appendChild(modalHeader);
+    let modalBody = createItemModalBody(file.getRuta, file.tipo);
+    if (modalBody == -1) {
+        window.alert("El formato no ha sido válido.");
+        return;
+    }
     modalContent.appendChild(modalBody);
     let modalFooter = createItemModalFooter(file.getId);
     modalContent.appendChild(modalFooter);
@@ -68,6 +82,7 @@ const pageviewfile = (file) => {
 const listviewFiles = (files) => {
     const listGroupFiles = document.querySelector('.list-group');
     util.componentCleaner(listGroupFiles);
+    if (files.length < 1) window.alert("No se han encontrado documentos.");
     files.forEach(file => {
         let itemLink = document.createElement('a');
         itemLink.setAttribute("class", "list-group-item list-group-item-action");
