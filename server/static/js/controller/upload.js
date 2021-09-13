@@ -26,6 +26,10 @@ const saveFile = (event) => {
                 "tamanio" : files[0].size,
                 "contenido" : pdf64
             }
+            let formagregarfile = document.querySelectorAll("#form_agregarfile"); 
+            formagregarfile.forEach( item => {
+                item.disabled = true 
+            });
             setFile(documento);
         }
         lector.readAsBinaryString(blob);

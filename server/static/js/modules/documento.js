@@ -12,6 +12,7 @@ class Documento {
         this.tipo = data.tipo;
         this.tamanio = data.tamanio;
         this.ruta = data.ruta;
+        this.contenido = data.contenido
         return this;
     }
     get getId() {
@@ -28,6 +29,9 @@ class Documento {
     }
     get getRuta() {
         return this.ruta;
+    }
+    get getContenido() {
+        return this.contenido;
     }
     set setId(id) {
         this.id = id;

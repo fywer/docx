@@ -30,20 +30,21 @@ class SQLServer:
                 return None
 
 class MySQL:
-    _instancia = None
-    _host = "127.0.0.1"
-    _database = "docx"
-    _user = "ifywerz"
-    _password = "company"
+    __instancia = None
+    __host = "127.0.0.1"
+    __port = 3306
+    __database = "docx"
+    __user = "ifywerz"
+    __password = "company"
     log = logging.getLogger('')
 
     def __new__(cls):
-        if cls._instancia != None:
-            return cls._instancia
+        if cls.__instancia != None:
+            return cls.__instancia
         else:
             try:
-                cls._instancia = pymysql.connect(host=cls._host, database=cls._database, user=cls._user, password=cls._password)
-                return cls._instancia
+                cls.__instancia = pymysql.connect(host=cls.__host, database=cls.__database, user=cls.__user, password=cls.__password)
+                return cls.__instancia
             except Exception as e:
                 cls.log.warn("ERROR: {0}\n".format(e))
                 return None
