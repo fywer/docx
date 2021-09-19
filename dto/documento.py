@@ -35,7 +35,9 @@ class DocumentoDAO:
         self.db.commit()
     
     def delete(self, id):
-        pass
+        sqlquery = f"delete from t_documento where id = {id};"
+        self.cursor.execute(sqlquery)
+        self.db.commit()
 
     def select(self, id=False):
         if id != False:
@@ -122,8 +124,18 @@ class DocumentoBO(Resource):
                 try:
                     try:
                         self.getdocumentodao(ServerDB.SQLSERVER).delete(id) 
-                        os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
-                        del(metadoc) #libera
+                        self.log.info("LOS METADATOS HAN SIDO ELIMINADOS EN SQLSERVER.")
+                        self.getdocumentodao(ServerDB.MYSQL).delete(id)
+                        self.log.info("EL ARCHIVO HA SIDO ELIMINADO EN MYSQL.")
+                        #Por definir eliminar en FTP
+                        try:
+                            os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
+                            self.log.info("EL ARCHIVO HA SIDO ELIMINADO EN CLOUD.")
+                            del(metadoc) #libera memoria
+                            self.log.info("LOS METADATOS HAN SIDO ELIMINADOS EN MEMORIA.")
+                        except Exception as e:
+                            self.log.warn("ERROR CLOUD: {0}\n".format(e))
+                            return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500    
                         return {"msg": "El documento ha sido eliminado."}, 201
                     except Exception as e:
                         self.log.warn("ERROR DB: {0}\n".format(e))
@@ -186,13 +198,19 @@ class DocumentoBO(Resource):
                 "tamanio": metadatos["tamanio"],
                 "ruta": os.path.join(self.url_relativa, self.setNombre(tipo))
             }
-            uri_cloud = os.path.join(self.url_absoluta, documento["nombre"])
-            if os.path.isfile(uri_cloud):
-                return {"msg": "El documento ya existe."}, 409
-            #documento['ruta'] = documento['ruta'].replace("\\", "/")
-            with open(uri_cloud, "wb") as f:
-                f.write(archivo)
-            self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN CLOUD.")
+            try:
+                uri_cloud = os.path.join(self.url_absoluta, documento["nombre"])
+                if os.path.isfile(uri_cloud):
+                    return {"msg": "El documento ya existe."}, 409
+                #documento['ruta'] = documento['ruta'].replace("\\", "/")
+                self.documentos.append(documento)
+                self.log.info("LOS METADATOS HAN SIDO ALMACENADOS EN MEMORIA.")
+                with open(uri_cloud, "wb") as f:
+                    f.write(archivo)
+                self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN CLOUD.")
+            except:
+                self.log.warn("ERROR CLOUD: {0}\n".format(e))
+                return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500    
             try:
                 self.getclientftp().upload(uri_cloud, documento["nombre"])
                 self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN FTP.")
@@ -201,8 +219,6 @@ class DocumentoBO(Resource):
                     self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN MYSQL.")
                     self.getdocumentodao(ServerDB.SQLSERVER).insert(documento)
                     self.log.info("LOS METADATOS HAN SIDO ALMACENADOS EN SQLSERVER.")
-                    self.documentos.append(documento)
-                    self.log.info("LOS METADATOS HAN SIDO ALMACENADOS EN MEMORIA.")
                 except Exception as e:
                     self.log.warn("ERROR BD: {0}\n".format(e))
                     return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
