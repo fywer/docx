@@ -1,8 +1,32 @@
 {% extends 'index.html' %}
 {% block view %}
+    <section class="container-fluid card">
+        <label class="text-start"><b>Periodo</b></label>
+        <form class="card-body input-group">
+            <input class="form-control" type="date" />
+            <input class="form-control" type="date" />
+        </form>
+        <label class="text-start"><b>Tipo de Archivo</b></label>
+        <form class="card-body input-group">
+            <select class="form-select" multiple aria-label="multiple select example">
+                <option value="1">MP4</option>
+                <option value="2">PNG</option>
+                <option value="3">JPGE</option>
+            </select>
+        </form>
+    </section>
     <section class="container-fluid card" id="page_view">
-        <div class="list-group card-body">
+        <div id="scroll" class="card-body" style="display: none;">
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
         </div>
+        <form id="form_displayfiles" class="card-body" style="display: block;">
+            <div class="list-group">
+            </div>
+        </form>
     </section>
     <!-- Modal para desplegar documento -->
     <div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" aria-hidden="true">

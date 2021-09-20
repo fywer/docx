@@ -47,3 +47,6 @@ class FTPClient(FTP):
 
     def path(self):
         return self.pwd()
+
+    def download(self):
+        pass

@@ -29,7 +29,7 @@ const cargarBuffer = (contenido, tipo) => {
     }
 }
 
-const createItemModalBody = (contenido, tipo) => {
+const createModalBody = (contenido, tipo) => {
     let modalBody = document.createElement('div');
     modalBody.setAttribute('class', 'modal-body');
     if (tipo == 'jpeg' || tipo == 'png') {
@@ -47,43 +47,41 @@ const createItemModalBody = (contenido, tipo) => {
         itemFrameFile.setAttribute('allowfullscreen', 'allowfullscreen');
         itemRatio.appendChild(itemFrameFile);
         modalBody.appendChild(itemRatio);
-    } else return -1;
+    } else throw "El formato no ha sido válido.";
     return modalBody;
 }
-const createItemModalFooter = (id) => {
+const createModalFooter = (id) => {
     let modalFooter = document.createElement('div');
     modalFooter.setAttribute('class', 'modal-footer');
-    
     let buttonClose = document.createElement('button');
     buttonClose.setAttribute('type', 'button');
     buttonClose.setAttribute('class', 'btn btn-secondary');
     buttonClose.setAttribute('data-bs-dismiss', 'modal');
     buttonClose.appendChild(document.createTextNode('Back'));
     modalFooter.appendChild(buttonClose);
-    
     let buttonDelete = document.createElement('button');
     buttonDelete.setAttribute('type', 'button');
     buttonDelete.setAttribute('class', 'btn btn btn-danger');
     buttonDelete.appendChild(document.createTextNode('Delete'));
-
     buttonDelete.addEventListener('click', (event) => {
         event.preventDefault();
         const eliminar = window.confirm("¿Esta seguro de eliminar el documento?");
-        (eliminar) ? deleteFile(id) : false 
+        if (eliminar) {
+            buttonDelete.disabled = true;
+            buttonDelete.innerText = "Erasing..."
+            buttonClose.disabled = true;
+            deleteFile(id)
+        } else return false; 
     });
     modalFooter.appendChild(buttonDelete);
     return modalFooter;
 }
-const pageviewfile = (file) => {
+const pageViewFile = (file) => {
     const modalContent = document.querySelector  (".modal-content");
     util.componentCleaner(modalContent);
-    let modalBody = createItemModalBody(file.getContenido, file.tipo);
-    if (modalBody == -1) {
-        window.alert("El formato no ha sido válido.");
-        return;
-    }
+    const modalBody = createModalBody(file.getContenido, file.tipo);
     modalContent.appendChild(modalBody);
-    let modalFooter = createItemModalFooter(file.getId);
+    let modalFooter = createModalFooter(file.getId);
     modalContent.appendChild(modalFooter);
     const options = {
         keyboard : true,
@@ -92,7 +90,8 @@ const pageviewfile = (file) => {
     const viewFile = new bootstrap.Modal(document.getElementById('view_file'), options);
     viewFile.show();
 }
-const listviewFiles = (files) => {
+const listViewFiles = (files) => {
+    document.getElementById("scroll").style.display = "none"
     const listGroupFiles = document.querySelector('.list-group');
     util.componentCleaner(listGroupFiles);
     if (files.length < 1) window.alert("No se han encontrado documentos.");
@@ -116,7 +115,9 @@ const listviewFiles = (files) => {
         listGroupFiles.appendChild(itemLink);
     });
 };
-const getFile = (id) => {
+const getFile = (id) => {  
+    document.getElementById("form_displayfiles").style.display = "None";
+    document.getElementById("scroll").style.display = "block";
     const uri = '/file/'.concat(id);
     const request = {
         method : 'GET',
@@ -128,10 +129,12 @@ const getFile = (id) => {
     then(handler.responseJSON).
     then(data => {
         return new Promise( (resolve, reject) => {
+            document.getElementById("form_displayfiles").style.display = "block";
+            document.getElementById("scroll").style.display = "None";
             resolve(new Documento().parser(data)); 
         });
     }).
-    then(pageviewfile).
+    then(pageViewFile).
     catch(handler.error);
 }
 
@@ -145,7 +148,7 @@ const getFiles = () => {
     }
     fetch(uri, request).
     then(handler.responseJSON).
-    then(listviewFiles).
+    then(listViewFiles).
     catch(handler.error); 
 };
 const deleteFile = (id) => {
@@ -165,5 +168,7 @@ const deleteFile = (id) => {
     catch(handler.error);
 };
 window.addEventListener('load', (event) => {
+    const scroll = document.getElementById("scroll");
+    scroll.style.display = "block";
     getFiles();
 });
