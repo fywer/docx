@@ -149,7 +149,7 @@ const getFiles = () => {
     fetch(uri, request).
     then(handler.responseJSON).
     then(listViewFiles).
-    catch(handler.error); 
+    catch(handler.error);
 };
 const deleteFile = (id) => {
     const uri = '/file/'.concat(id);
@@ -167,8 +167,35 @@ const deleteFile = (id) => {
     }).
     catch(handler.error);
 };
+
+const getFileByTypes = (tipos) => {
+    const uri = '/files';
+    const request = {
+        method: 'POST',
+        body : JSON.stringify(tipos),
+        headers : {
+            'Content-Type' : 'application/json; charset=utf-8',
+        }
+    }
+    fetch(uri, request).
+    then(handler.responseJSON).
+    then(listViewFiles).
+    catch(handler.error);
+}
+
 window.addEventListener('load', (event) => {
     const scroll = document.getElementById("scroll");
     scroll.style.display = "block";
     getFiles();
+    const sele_type = document.getElementById("sele_type");
+    sele_type.addEventListener("change", (event) => {
+        const options = event.target.options;
+        const valores = [];
+        for (let i = 0; i < options.length; i++ ) {
+            if (options[i].selected) {
+                valores.push(options[i].value);
+            }                
+        }
+        getFileByTypes(valores);
+    });
 });

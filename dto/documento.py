@@ -1,18 +1,20 @@
 from flask import request
 from flask_restful import Resource
-import time
+import time, datetime
 import os, base64
 import queue
 from .conexion import SQLServer, MySQL
 from .ftp import FTPClient
 import logging, sys
 from enum import Enum
+from flask_restful import fields, marshal_with
 
 logging.basicConfig(
     level = logging.DEBUG,
     format = '%(levelname)7s %(message)s',
     stream = sys.stderr 
 )
+log = logging.getLogger('')
 
 class ServerDB(Enum):
     SQLSERVER = 1
@@ -46,6 +48,7 @@ class DocumentoDAO:
             return self.cursor.fetchall()
         else:
             return
+
 class MetadatoDAO:
     def __init__(self):
         self.db = SQLServer()
@@ -74,25 +77,37 @@ class MetadatoDAO:
             rows = self.cursor.fetchall()
             return rows
         else:
-            pass        
+            pass
+
+class Metadato(MetadatoDAO):
+    def __init__(self):
+        MetadatoDAO.__init__(self)
+
+    def findByType(self, tipo):
+        sqlquery = f"select * from t_documento where tipo='{tipo}';"
+        self.cursor.execute(sqlquery)
+        rows = self.cursor.fetchall()
+        return rows
 
 class DocumentoBO(Resource):
     url_absoluta = os.path.join("c:\\", "Users", "fywer", "Google Drive")
     #os.chdir(url_absoluta)
     #url_relativa = os.path.join("ftp:\\", "fywer:1234@", "127.0.0.1")
-    url_relativa = "ftp:\\fywer:1234@192.168.1.65"
+    
     documentos = list()
-    metadatodao = MetadatoDAO()
-    documentodao = DocumentoDAO()
-    log = logging.getLogger('')
+    metadatodao = Metadato()
+    documentodao = DocumentoDAO()    
     clientftp = FTPClient()
+
+    #clientftp.gethost = "192.168.1.137"
+    url_relativa = f"ftp:\\{clientftp.getuser}:{clientftp.getpassword}@{clientftp.gethost}"
 
     def __init__(self):
         try:
             if not os.path.isdir(self.url_absoluta):
                 os.mkdir(self.url_absoluta, 0o777)
         except Exception as e:
-            self.log.warn("ERROR: {0}\n".format(e))
+            log.warn("ERROR: {0}\n".format(e))
             return None
     
     @classmethod
@@ -103,20 +118,29 @@ class DocumentoBO(Resource):
         #MySQL
         elif index is ServerDB.MYSQL:
             return cls.documentodao
+    
+    @classmethod
+    def getTipoDocumento(cls, tipo):
+        if tipo == 'png':
+            return TypeDOC.PNG
+        if tipo == 'jpeg':
+            return TypeDOC.JPEG
+        if tipo == 'mp4':
+            return TypeDOC.MP4
 
     @classmethod
     def getclientftp(cls):
         return cls.clientftp
 
     def setNombre(self, tipo):
-        ahora = time.localtime()
-        fecha = "{0}{1}{2}-{3}{4}{5}".format(ahora.tm_year, ahora.tm_mon, ahora.tm_mday, ahora.tm_hour, ahora.tm_min, ahora.tm_sec)
-        if tipo == 'jpeg':
-            return 'IMG-{}.jpg'.format(fecha)
-        if tipo == 'png':
-            return 'IMG-{}.png'.format(fecha)
-        if tipo == 'mp4':
-            return 'VID-{}.mp4'.format(fecha)
+        ahora = datetime.datetime.now()
+        fecha = ahora.strftime("%Y%m%d-%H%M%S-%f")
+        if tipo == TypeDOC.JPEG:
+            return f'IMG-{fecha}.jpg'
+        if tipo == TypeDOC.PNG:
+            return f'IMG-{fecha}.png'
+        if tipo == TypeDOC.MP4:
+            return f'VID-{fecha}.mp4'
 
     def delete (self, id): 
         for metadoc in self.documentos:
@@ -124,25 +148,27 @@ class DocumentoBO(Resource):
                 try:
                     try:
                         self.getdocumentodao(ServerDB.SQLSERVER).delete(id) 
-                        self.log.info("LOS METADATOS HAN SIDO ELIMINADOS EN SQLSERVER.")
+                        log.info("LOS METADATOS HAN SIDO ELIMINADOS EN SQLSERVER.")
                         self.getdocumentodao(ServerDB.MYSQL).delete(id)
-                        self.log.info("EL ARCHIVO HA SIDO ELIMINADO EN MYSQL.")
+                        log.info("EL ARCHIVO HA SIDO ELIMINADO EN MYSQL.")
                         #Por definir eliminar en FTP
+                        self.getclientftp().remove(metadoc["nombre"])
+                        log.info("EL ARCHIVO HA SIDO ELIMINADO EN FTP.")
                         try:
                             os.remove(os.path.join(self.url_absoluta, metadoc["nombre"]))
-                            self.log.info("EL ARCHIVO HA SIDO ELIMINADO EN CLOUD.")
+                            log.info("EL ARCHIVO HA SIDO ELIMINADO EN CLOUD.")
                             del(metadoc) #libera memoria
-                            self.log.info("LOS METADATOS HAN SIDO ELIMINADOS EN MEMORIA.")
+                            log.info("LOS METADATOS HAN SIDO ELIMINADOS EN MEMORIA.")
                         except Exception as e:
-                            self.log.warn("ERROR CLOUD: {0}\n".format(e))
+                            log.warn("ERROR CLOUD: {0}\n".format(e))
                             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500    
                         return {"msg": "El documento ha sido eliminado."}, 201
                     except Exception as e:
-                        self.log.warn("ERROR DB: {0}\n".format(e))
+                        log.warn("ERROR DB: {0}\n".format(e))
                         return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
 
                 except Exception as e:
-                    self.log.warn("ERROR: {0}\n".format(e))
+                    log.warn("ERROR: {0}\n".format(e))
                     return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
         
         return {"msg" : "El documento no ha sido encontrado."}, 404
@@ -163,7 +189,7 @@ class DocumentoBO(Resource):
                     documento = {}
                 return self.documentos, 200
             except Exception as e:
-                self.log.warn("ERROR: {0}\n".format(e))
+                log.warn("ERROR: {0}\n".format(e))
                 return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
         else:
             for metadoc in self.documentos:
@@ -185,18 +211,19 @@ class DocumentoBO(Resource):
             metadatos = request.json
             archivo = base64.b64decode(metadatos["contenido"])
         except Exception as e:
-            self.log.warn("ERROR: {0}\n".format(e))
+            log.warn("ERROR: {0}\n".format(e))
             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
         try:
             tipo = metadatos["tipo"].split('/')[1]
             if tipo != 'png' and tipo != 'jpeg' and tipo != 'mp4' :
                 return {"msg" : "El formato no ha sido aceptado."}, 406 
+            nombre = self.setNombre(self.getTipoDocumento(tipo))
             documento = {
                 "id": self.getdocumentodao(ServerDB.SQLSERVER).count()[0][0] + 1,
-                "nombre" : self.setNombre(tipo),
+                "nombre" : nombre,
                 "tipo": tipo,
                 "tamanio": metadatos["tamanio"],
-                "ruta": os.path.join(self.url_relativa, self.setNombre(tipo))
+                "ruta": os.path.join(self.url_relativa, nombre)
             }
             try:
                 uri_cloud = os.path.join(self.url_absoluta, documento["nombre"])
@@ -204,29 +231,64 @@ class DocumentoBO(Resource):
                     return {"msg": "El documento ya existe."}, 409
                 #documento['ruta'] = documento['ruta'].replace("\\", "/")
                 self.documentos.append(documento)
-                self.log.info("LOS METADATOS HAN SIDO ALMACENADOS EN MEMORIA.")
+                log.info("LOS METADATOS HAN SIDO ALMACENADOS EN MEMORIA.")
                 with open(uri_cloud, "wb") as f:
                     f.write(archivo)
-                self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN CLOUD.")
+                log.info("EL ARCHIVO HA SIDO ALMACENADO EN CLOUD.")
             except:
-                self.log.warn("ERROR CLOUD: {0}\n".format(e))
+                log.warn("ERROR CLOUD: {0}\n".format(e))
                 return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500    
             try:
                 self.getclientftp().upload(uri_cloud, documento["nombre"])
-                self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN FTP.")
+                log.info("EL ARCHIVO HA SIDO ALMACENADO EN FTP.")
                 try:
                     self.getdocumentodao(ServerDB.MYSQL).insert(documento["id"], metadatos["contenido"])
-                    self.log.info("EL ARCHIVO HA SIDO ALMACENADO EN MYSQL.")
+                    log.info("EL ARCHIVO HA SIDO ALMACENADO EN MYSQL.")
                     self.getdocumentodao(ServerDB.SQLSERVER).insert(documento)
-                    self.log.info("LOS METADATOS HAN SIDO ALMACENADOS EN SQLSERVER.")
+                    log.info("LOS METADATOS HAN SIDO ALMACENADOS EN SQLSERVER.")
                 except Exception as e:
-                    self.log.warn("ERROR BD: {0}\n".format(e))
+                    log.warn("ERROR BD: {0}\n".format(e))
                     return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
             except Exception as e:
-                self.log.warn("ERROR FTP: {0}\n".format(e))
+                log.warn("ERROR FTP: {0}\n".format(e))
                 return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
             return {"msg" : "El documento ha sido guardado."}, 200
         
         except Exception as e:
-            self.log.warn("ERROR: {0}\n".format(e))
+            log.warn("ERROR: {0}\n".format(e))
             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
+
+class DocumentoTipoBO(Resource):
+    documentos = list()
+    metadatodao = Metadato()
+    documentodao = DocumentoDAO()
+    def __init__(self):
+        pass
+    @classmethod
+    def getdocumentodao(cls, index):
+        #SQLServer
+        if index is ServerDB.SQLSERVER:
+            return cls.metadatodao
+        #MySQL
+        elif index is ServerDB.MYSQL:
+            return cls.documentodao
+
+    def post(self):
+        tipos = request.json
+        documentosByType = []
+        try:
+            for tipo in tipos:
+                rows = self.getdocumentodao(ServerDB.SQLSERVER).findByType(tipo)
+                for fila in rows:
+                    documento = {}
+                    documento["id"] = fila[0]
+                    documento["nombre"] = fila[1]
+                    documento["tipo"] = fila[2]
+                    documento["ruta"] = fila[3]
+                    documento["tamanio"] = fila[4]
+                    documentosByType.append(documento)
+            return documentosByType, 200
+        except Exception as e:
+            log.warn("ERROR: {0}\n".format(e))
+            return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
+

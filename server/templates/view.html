@@ -8,10 +8,10 @@
         </form>
         <label class="text-start"><b>Tipo de Archivo</b></label>
         <form class="card-body input-group">
-            <select class="form-select" multiple aria-label="multiple select example">
-                <option value="1">MP4</option>
-                <option value="2">PNG</option>
-                <option value="3">JPGE</option>
+            <select id="sele_type" class="form-select" multiple>
+                <option value="mp4">MP4</option>
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
             </select>
         </form>
     </section>
@@ -31,7 +31,7 @@
     <!-- Modal para desplegar documento -->
     <div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content">
+            <div class="modal-content" style="background-color: rgba(0, 0, 0, 0.75);">
             </div>
         </div>
     </div>
