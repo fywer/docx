@@ -1,7 +1,6 @@
 'use strict'
 import handler from "../util/handler.js";
 
-
 const setFile = (documento) => {
     const uri = '/file';
     const request = {
@@ -50,9 +49,9 @@ window.addEventListener('load', (event) => {
     const formagregarfile = document.getElementById("form_agregarfile");
     formagregarfile.addEventListener('submit', (event) => {
         event.preventDefault();
-        const btonuploadfile = document.querySelector("input[form='form_agregarfile']")
+        const btonuploadfile = document.querySelector("input[form='form_agregarfile']");
         btonuploadfile.disabled = true;
-        btonuploadfile.value = "Loading..."
+        btonuploadfile.value = "Loading...";
         const btoncargarfile = document.getElementById("bton_cargarfile");
         const files= btoncargarfile.files;
         try {
@@ -60,10 +59,11 @@ window.addEventListener('load', (event) => {
                 window.alert("No ha seleccionado un archivo.");
                 throw "No ha seleccionado un archivo.";
             }
-        } catch (e) {
+        } 
+        catch (e) {
             console.warn(e);
             btonuploadfile.disabled = false;
-            btonuploadfile.value = "Upload"
+            btonuploadfile.value = "Upload";
             return;
         }
         saveFile(files[0]);

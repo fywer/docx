@@ -71,7 +71,7 @@ class FTPClient(FTP):
             self.storbinary('STOR {0}'.format(nombre) , archivo)
 
     def path(self):
-        self.dir()
+        return self.pwd()
 
     def download(self):
         pass

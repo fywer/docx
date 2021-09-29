@@ -7,7 +7,7 @@ from .conexion import SQLServer, MySQL
 from .ftp import FTPClient
 import logging, sys
 from enum import Enum
-from flask_restful import fields, marshal_with
+from datetime import date
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -31,20 +31,22 @@ class DocumentoDAO:
         self.cursor = self.db.cursor()
 
     def insert(self, id, documento):
-        sqlquery = f"insert into t_documento (id, documento) " 
-        sqlquery += f"values ('{id}','{documento}');"
+        sqlquery = f"INSERT INTO t_documento (id, documento) " 
+        sqlquery += f"VALUES ('{id}','{documento}');"
         self.cursor.execute(sqlquery)
         self.db.commit()
+        log.info(sqlquery)
     
     def delete(self, id):
-        sqlquery = f"delete from t_documento where id = {id};"
+        sqlquery = f"DELETE FROM t_documento WHERE id = {id};"
         self.cursor.execute(sqlquery)
         self.db.commit()
 
     def select(self, id=False):
         if id != False:
-            sqlquery = f"select * from t_documento where id='{id}';"
+            sqlquery = f"SELECT * FROM t_documento WHERE id='{id}';"
             self.cursor.execute(sqlquery)
+            log.info(sqlquery)
             return self.cursor.fetchall()
         else:
             return
@@ -55,26 +57,30 @@ class MetadatoDAO:
         self.cursor = self.db.cursor()
 
     def count(self):
-        sqlcount = f"select count(*) from t_documento"
+        sqlcount = f"SELECT COUNT(*) FROM t_documento"
         self.cursor.execute(sqlcount)
+        log.info(sqlquery)
         return self.cursor.fetchall()
 
     def insert(self, documento):
-        sqlquery = f"insert into t_documento (id, nombre, tipo, ruta, tamanio) " 
-        sqlquery += f"values ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
+        sqlquery = f"INSERT INTO t_documento (id, nombre, tipo, ruta, tamanio) " 
+        sqlquery += f"VALUES ('{documento['id']}','{documento['nombre']}','{documento['tipo']}','{ documento['ruta']}',{documento['tamanio']});"
         self.cursor.execute(sqlquery)
         self.db.commit()
+        log.info(sqlquery)
 
     def delete(self, id):
-        sqlquery = f"delete from t_documento where id = {id};"
+        sqlquery = f"DELETE FROM t_documento WHERE id = {id};"
         self.cursor.execute(sqlquery)
         self.db.commit()
+        log.info(sqlquery)
 
     def select(self, id=False):
         if id == False:
-            sqlquery = f"select * from t_documento order by fecha desc;"
+            sqlquery = f"SELECT * FROM t_documento ORDER BY fecha DESC;"
             self.cursor.execute(sqlquery)
             rows = self.cursor.fetchall()
+            log.info(sqlquery)
             return rows
         else:
             pass
@@ -84,9 +90,24 @@ class Metadato(MetadatoDAO):
         MetadatoDAO.__init__(self)
 
     def findByType(self, tipo):
-        sqlquery = f"select * from t_documento where tipo='{tipo}';"
+        sqlquery = f"SELECT * FROM t_documento WHERE tipo='{tipo}';"
         self.cursor.execute(sqlquery)
         rows = self.cursor.fetchall()
+        log.info(sqlquery)
+        return rows
+
+    def findByDate(self, inicio, final):
+        i = date.fromisoformat(inicio)
+        f = date.fromisoformat(final)
+        diainicio, mesinicio, anioinicio = i.day, i.month, i.year
+        diafinal, mesfinal, aniofinal = f.day, f.month, f.year
+        sqlquery = f'''SELECT * FROM t_documento WHERE 
+        ( YEAR(fecha) >= {anioinicio} AND YEAR(fecha) <= {aniofinal} ) 
+        AND ( MONTH(fecha) >= {mesinicio} AND MONTH(fecha) <= {mesfinal} ) 
+        AND ( DAY(fecha) >= {diainicio} AND DAY(fecha) <= {diafinal} )'''
+        self.cursor.execute(sqlquery)
+        rows = self.cursor.fetchall()
+        log.info(sqlquery)
         return rows
 
 class DocumentoBO(Resource):
@@ -258,7 +279,7 @@ class DocumentoBO(Resource):
             log.warn("ERROR: {0}\n".format(e))
             return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
 
-class DocumentoTipoBO(Resource):
+class DocumentoTipoORDateBO(Resource):
     documentos = list()
     metadatodao = Metadato()
     documentodao = DocumentoDAO()
@@ -274,21 +295,41 @@ class DocumentoTipoBO(Resource):
             return cls.documentodao
 
     def post(self):
-        tipos = request.json
-        documentosByType = []
-        try:
-            for tipo in tipos:
-                rows = self.getdocumentodao(ServerDB.SQLSERVER).findByType(tipo)
+        parametros = request.json
+        self.documentos.clear()
+        log.warn(parametros)
+        if type(parametros) is list:
+            try:
+                for tipo in parametros:
+                    rows = self.getdocumentodao(ServerDB.SQLSERVER).findByType(tipo)
+                    for fila in rows:
+                        documento = {}
+                        documento["id"] = fila[0]
+                        documento["nombre"] = fila[1]
+                        documento["tipo"] = fila[2]
+                        documento["ruta"] = fila[3]
+                        documento["tamanio"] = fila[4]
+                        #documentosByType.append(documento)
+                        self.documentos.append(documento)
+                return self.documentos, 200
+            except Exception as e:
+                log.warn("ERROR: {0}\n".format(e))
+                return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
+        elif type(parametros) is dict:
+            try:
+                inicio = parametros['inicio']
+                final = parametros['final']
+                rows = self.getdocumentodao(ServerDB.SQLSERVER).findByDate(inicio, final)
                 for fila in rows:
-                    documento = {}
-                    documento["id"] = fila[0]
-                    documento["nombre"] = fila[1]
-                    documento["tipo"] = fila[2]
-                    documento["ruta"] = fila[3]
-                    documento["tamanio"] = fila[4]
-                    documentosByType.append(documento)
-            return documentosByType, 200
-        except Exception as e:
-            log.warn("ERROR: {0}\n".format(e))
-            return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500
-
+                        documento = {}
+                        documento["id"] = fila[0]
+                        documento["nombre"] = fila[1]
+                        documento["tipo"] = fila[2]
+                        documento["ruta"] = fila[3]
+                        documento["tamanio"] = fila[4]
+                        #documentosByType.append(documento)
+                        self.documentos.append(documento)
+                return self.documentos, 200
+            except Exception as e:
+                log.warn("ERROR: {0}\n".format(e))
+                return {"msg": "Ha ocurrido una exepción. Contacta soporte técnico."}, 500

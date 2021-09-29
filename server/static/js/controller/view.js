@@ -168,6 +168,21 @@ const deleteFile = (id) => {
     catch(handler.error);
 };
 
+const getFileByDate = (rango) => {
+    const uri = '/files';
+    const request = {
+        method: 'POST',
+        body : JSON.stringify(rango),
+        headers : {
+            'Content-Type' : 'application/json; charset=utf-8',
+        }
+    }
+    fetch(uri, request).
+    then(handler.responseJSON).
+    then(listViewFiles).
+    catch(handler.error);
+}
+
 const getFileByTypes = (tipos) => {
     const uri = '/files';
     const request = {
@@ -187,15 +202,26 @@ window.addEventListener('load', (event) => {
     const scroll = document.getElementById("scroll");
     scroll.style.display = "block";
     getFiles();
-    const sele_type = document.getElementById("sele_type");
-    sele_type.addEventListener("change", (event) => {
+    const seleType = document.getElementById("sele_type");
+    seleType.addEventListener("change", (event) => {
         const options = event.target.options;
         const valores = [];
         for (let i = 0; i < options.length; i++ ) {
             if (options[i].selected) {
                 valores.push(options[i].value);
-            }                
+            }
         }
         getFileByTypes(valores);
+    });
+    document.getElementById("bton_incio").
+    addEventListener("change", (event) => {
+        const rango = {}
+        rango['inicio'] = event.target.value;
+        document.getElementById("bton_final").value = null;
+        document.getElementById("bton_final").
+        addEventListener("change", (event) => {
+            rango['final'] = event.target.value;
+            getFileByDate(rango);
+        });
     });
 });
