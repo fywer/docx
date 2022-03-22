@@ -1,99 +1,83 @@
 'use strict'
-import handler from "../util/handler.js";
-import util from "../util/util.js";
-import { Documento } from "../modules/documento.js";
+const API = "/"
 
-const cargarBuffer = (contenido, tipo) => {
-    let decodeData = window.atob(contenido)
-    let buffer = new ArrayBuffer(contenido.length);
-    let view = new Uint8Array(buffer);
-    for (let i = 0; i < contenido.length; i ++) {
-        view[i] = decodeData.charCodeAt(i);
+class Documento {
+    constructor(data) {
+        this.id = data.id;
+        this.nombre = data.nombre;
+        this.tipo = data.tipo;
+        this.tamanio = data.tamanio;
+        this.ruta = data.ruta;
+        this.contenido = data.contenido
+        return this;
     }
-    let file = NaN;
-    switch (tipo) {
-        case 'jpeg':
-            file = new Blob([view], {type: 'image/jpeg'});
-            return URL.createObjectURL(file);
-            break;
-        case 'png':
-            file = new Blob([view], {type: 'image/png'});
-            return URL.createObjectURL(file);
-            break;
-        case 'mp4':
-            file = new Blob([view], {type: 'video/mp4'});
-            return URL.createObjectURL(file);
-            break;
-        default:
-            break;
+    get getId() {
+        return this.id;
+    }
+    get getTipo() {
+        return this.tipo;
+    }
+    get getNombre() {
+        return this.nombre;
+    }
+    get getTamanio() {
+        return this.tamanio;
+    }
+    get getRuta() {
+        return this.ruta;
+    }
+    get getContenido() {
+        return this.contenido;
+    }
+    set setId(id) {
+        this.id = id;
+    }
+    set setNombre(nombre) {
+        this.nombre = nombre;
+    }
+    set setTipo(tipo) {
+        this.tipo = tipo;
+    }
+    set setTamanio(tamanio) {
+        this.tamanio = tamanio;
+    }
+    set setRuta(ruta) {
+        this.ruta = ruta;
     }
 }
 
-const createModalBody = (contenido, tipo) => {
-    let modalBody = document.createElement('div');
-    modalBody.setAttribute('class', 'modal-body');
-    if (tipo == 'jpeg' || tipo == 'png') {
-        let ruta = cargarBuffer(contenido, tipo);
-        let itemFrameFile = document.createElement('img');
-        itemFrameFile.setAttribute('class', "img-fluid");
-        itemFrameFile.setAttribute('src', ruta);
-        modalBody.appendChild(itemFrameFile);
-    } else if (tipo == 'mp4') {
-        let ruta = cargarBuffer(contenido, tipo);
-        let itemRatio = document.createElement('div');
-        itemRatio.setAttribute('class', 'ratio ratio-16x9');
-        let itemFrameFile = document.createElement('iframe');
-        itemFrameFile.setAttribute('src', ruta);
-        itemFrameFile.setAttribute('allowfullscreen', 'allowfullscreen');
-        itemRatio.appendChild(itemFrameFile);
-        modalBody.appendChild(itemRatio);
-    } else throw "El formato no ha sido válido.";
-    return modalBody;
+const componentCleaner = (component) => {
+	while (component.firstChild){
+ 		component.removeChild(component.firstChild);
+	};
 }
-const createModalFooter = (id) => {
-    let modalFooter = document.createElement('div');
-    modalFooter.setAttribute('class', 'modal-footer');
-    let buttonClose = document.createElement('button');
-    buttonClose.setAttribute('type', 'button');
-    buttonClose.setAttribute('class', 'btn btn-secondary');
-    buttonClose.setAttribute('data-bs-dismiss', 'modal');
-    buttonClose.appendChild(document.createTextNode('Back'));
-    modalFooter.appendChild(buttonClose);
-    let buttonDelete = document.createElement('button');
-    buttonDelete.setAttribute('type', 'button');
-    buttonDelete.setAttribute('class', 'btn btn btn-danger');
-    buttonDelete.appendChild(document.createTextNode('Delete'));
-    buttonDelete.addEventListener('click', (event) => {
-        event.preventDefault();
-        const eliminar = window.confirm("¿Esta seguro de eliminar el documento?");
-        if (eliminar) {
-            buttonDelete.disabled = true;
-            buttonDelete.innerText = "Erasing..."
-            buttonClose.disabled = true;
-            deleteFile(id)
-        } else return false; 
-    });
-    modalFooter.appendChild(buttonDelete);
-    return modalFooter;
-}
-const pageViewFile = (file) => {
-    const modalContent = document.querySelector  (".modal-content");
-    util.componentCleaner(modalContent);
-    const modalBody = createModalBody(file.getContenido, file.tipo);
-    modalContent.appendChild(modalBody);
-    let modalFooter = createModalFooter(file.getId);
-    modalContent.appendChild(modalFooter);
-    const options = {
-        keyboard : true,
-        backdrop : 'static'
-    }
-    const viewFile = new bootstrap.Modal(document.getElementById('view_file'), options);
-    viewFile.show();
-}
+
+
+// const createModalBody = (file) => {
+//     let modalBody = document.createElement('div');
+//     modalBody.setAttribute('class', 'modal-body');
+//     if (file.tipo == '1' || file.tipo == '2') {
+//         let ruta = cargarBuffer(file.contenido, file.tipo);
+//         let itemFrameFile = document.createElement('img');
+//         itemFrameFile.setAttribute('class', "img-fluid");
+//         itemFrameFile.setAttribute('src', ruta);
+//         modalBody.appendChild(itemFrameFile);
+//     } else if (file.tipo == '3') {
+//         let ruta = cargarBuffer(file.contenido, file.tipo);
+//         let itemRatio = document.createElement('div');
+//         itemRatio.setAttribute('class', 'ratio ratio-16x9');
+//         let itemFrameFile = document.createElement('iframe');
+//         itemFrameFile.setAttribute('src', ruta);
+//         itemFrameFile.setAttribute('allowfullscreen', 'allowfullscreen');
+//         itemRatio.appendChild(itemFrameFile);
+//         modalBody.appendChild(itemRatio);
+//     } else throw "El formato no ha sido válido.";
+//     return modalBody;
+// }
+
 const listViewFiles = (files) => {
-    document.getElementById("scroll").style.display = "none"
     const listGroupFiles = document.querySelector('.list-group');
-    util.componentCleaner(listGroupFiles);
+    componentCleaner(listGroupFiles);
     if (files.length < 1) window.alert("No se han encontrado documentos.");
     files.forEach(file => {
         let itemLink = document.createElement('a');
@@ -105,86 +89,84 @@ const listViewFiles = (files) => {
         itemH5Nombre.appendChild(document.createTextNode(file.nombre));
         itemdiv.appendChild(itemH5Nombre);
         itemLink.appendChild(itemdiv);
-        let itemSmallTipo = document.createElement('small');
-        itemSmallTipo.appendChild(document.createTextNode(file.tipo));
-        itemLink.appendChild(itemSmallTipo)
+        let itemSmallTipo = document.createElement('small');   
+        let tipo = "";
+        switch (file.tipo) {
+            case "1":
+                tipo = "jpeg"
+                break
+            case "2":
+                tipo = "png"
+                break
+            case "3":
+                tipo =  "mp4"
+                break
+        }
+        itemSmallTipo.appendChild(document.createTextNode( tipo ));
+        itemLink.appendChild(itemSmallTipo);
         itemLink.addEventListener('click', (event) => {
             event.preventDefault();
-            getFile(file.id)    
+            getFile(file.id);    
         });
         listGroupFiles.appendChild(itemLink);
     });
 };
-const getFile = (id) => {  
+
+const fetchData = (urlapi, request) => {
+    return new Promise( (resolve, reject) => {
+        fetch(urlapi, request).
+        then( response => {
+            if ( response.status >= 200 && response.status <= 299 ) {
+                resolve(response.json());
+            } else {
+                console.error(response);
+                reject(new Error(response.status, urlapi));
+            }
+        })
+    })
+};
+
+const getFile = (id) => {   
     document.getElementById("form_displayfiles").style.display = "None";
     document.getElementById("scroll").style.display = "block";
-    const uri = '/file/'.concat(id);
-    const request = {
-        method : 'GET',
-        headers : {
-            'Content-Type' : 'application/json; charset=utf-8 '
-        }
-    }
-    fetch(uri, request).
-    then(handler.responseJSON).
-    then(data => {
-        return new Promise( (resolve, reject) => {
-            document.getElementById("form_displayfiles").style.display = "block";
-            document.getElementById("scroll").style.display = "None";
-            resolve(new Documento().parser(data)); 
-        });
-    }).
-    then(pageViewFile).
-    catch(handler.error);
-}
-
-const getFiles = () => {
-    const uri = '/file';
     const request = {
         method: 'GET',
         headers: {
             'Content-Type' : 'application/json; charset=utf-8',
         }
     }
-    fetch(uri, request).
-    then(handler.responseJSON).
-    then(listViewFiles).
-    catch(handler.error);
-};
-const deleteFile = (id) => {
-    const uri = '/file/'.concat(id);
-    const request = {
-        method : 'DELETE',
-        headers : {
-            'Content-Type' : 'application/json; charset=utf-8',
-        }
-    }
-    fetch(uri, request).
-    then(handler.responseJSON).
-    then( data => {
-        window.alert(data.msg);
-        window.location = "/"
-    }).
-    catch(handler.error);
-};
-
-const getFileByDate = (rango) => {
-    const uri = '/files';
-    const request = {
-        method: 'POST',
-        body : JSON.stringify(rango),
-        headers : {
-            'Content-Type' : 'application/json; charset=utf-8',
-        }
-    }
-    fetch(uri, request).
-    then(handler.responseJSON).
-    then(listViewFiles).
-    catch(handler.error);
+    const uri = 'file/'.concat(id);
+    const data = fetchData(`${API}${uri}`, request)
+    data.
+    then( response => {
+        document.getElementById("form_displayfiles").style.display = "block";
+        document.getElementById("scroll").style.display = "None";
+        pageViewFile(new Documento(response));
+    })
+    .catch( e => {
+        console.error(e);
+        window.alert('Por favor, intentalo mas tarde. Código: ' + e);
+    });
 }
 
+const getFiles =  () => {
+    const request = {
+        method: 'GET',
+        headers: {
+            'Content-Type' : 'application/json; charset=utf-8',
+        }
+    }
+    const url = 'file';
+    const data = fetchData(`${API}${url}`, request);
+    data
+    .then( response => { console.log(response) })
+    .catch(e => {
+        console.error(e);
+        window.alert('Por favor, intentalo mas tarde. Código: ' + e);
+    });
+};
+
 const getFileByTypes = (tipos) => {
-    const uri = '/files';
     const request = {
         method: 'POST',
         body : JSON.stringify(tipos),
@@ -192,23 +174,48 @@ const getFileByTypes = (tipos) => {
             'Content-Type' : 'application/json; charset=utf-8',
         }
     }
-    fetch(uri, request).
-    then(handler.responseJSON).
-    then(listViewFiles).
-    catch(handler.error);
+    const uri = 'files';
+    const data = fetchData(`${API}${uri}`, request);
+    data
+    .then( response => {
+        listViewFiles(response);
+    })
+    .catch(e => {
+        console.error(e);
+        window.alert('Por favor, intentalo mas tarde. ' + e);
+    });
 }
 
+const getFileByDate = (rango) => {
+    const request = {
+        method: 'POST',
+        body : JSON.stringify(rango),
+        headers : {
+            'Content-Type' : 'application/json; charset=utf-8',
+        }
+    }
+    const uri = 'files';
+    const data = fetchData(`${API}${uri}`, request);
+    data
+    .then( response => {
+        listViewFiles(response);
+    })
+    .catch(e => {
+        console.error(e);
+        window.alert('Por favor, intentalo mas tarde. ' + e);
+    });
+}
+
+
 window.addEventListener('load', (event) => {
-    const scroll = document.getElementById("scroll");
-    scroll.style.display = "block";
-    getFiles();
-    const seleType = document.getElementById("sele_type");
-    seleType.addEventListener("change", (event) => {
+    // getFiles(); 
+    document.getElementById("sele_type").
+    addEventListener("change", (event) => {
         const options = event.target.options;
         const valores = [];
         for (let i = 0; i < options.length; i++ ) {
             if (options[i].selected) {
-                valores.push(options[i].value);
+                valores.push(optionss[i].value);
             }
         }
         getFileByTypes(valores);

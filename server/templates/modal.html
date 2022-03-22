@@ -1,0 +1,99 @@
+{% extends 'index.html' %}
+{% import '/macros/archivo.html'as macro %}
+{% block modal %}
+<!-- Modal para desplegar documento -->
+<!-- Page View File -->
+<div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" >
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content" >
+            <div class="modal-header">
+                <h5 class="modal-title">{{ documento.nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <img class="img-fluid" id="img_mostrarfile" src="{{ url_for('static', filename='img/'+documento.nombre) }}" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" onclick="eliminar({{ documento.id }})">Delete changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const API = "/"
+    const fetchData = (urlapi, request) => {
+        return new Promise( (resolve, reject) => {
+            fetch(urlapi, request).
+            then( response => {
+                if ( response.status >= 200 && response.status <= 299 ) {
+                    resolve(response.json());
+                } else {
+                    console.error(response);
+                    reject(new Error(response.status, urlapi));
+                }
+            })
+        })
+    };
+    const viewDocument = () => {
+        const options = {
+            keyboard : true,
+            backdrop : 'static'
+        }
+        const viewFile = new bootstrap.Modal(document.getElementById('view_file'), options);
+        viewFile.show();
+    }
+    viewDocument();
+    const deleteFile = (id) => {
+        const uri = 'file/'.concat(id);
+        const request = {
+            method : 'DELETE',
+            headers : {
+                'Content-Type' : 'application/json; charset=utf-8',
+            }
+        }
+        const data = fetchData(`${API}${uri}`, request);
+        data
+        .then( response => {
+            window.alert(response.msg);
+            window.location = "/"
+        })
+        .catch(e => {
+            console.error(e);
+            window.alert('Por favor, intentalo mas tarde. ' + e);
+        });
+    }
+    const eliminar = (id) => {
+        const eliminar = window.confirm("¿Esta seguro de eliminar el documento?");
+        if (eliminar) deleteFile(id)
+        else return false; 
+    }
+    const cargarBuffer = (contenido, tipo) => {
+        let decodeData = window.atob(contenido)
+        let buffer = new ArrayBuffer(contenido.length);
+        let view = new Uint8Array(buffer);
+        for (let i = 0; i < contenido.length; i ++) {
+            view[i] = decodeData.charCodeAt(i);
+        }
+        let file = NaN;
+        console.log(tipo);
+        switch (tipo) {
+            case 1:
+                file = new Blob([view], {type: 'image/jpeg'});
+                document.getElementById("img_mostrarfile").setAttribute("src", URL.createObjectURL(file));
+                break;
+            case 2:
+                file = new Blob([view], {type: 'image/png'});
+                document.getElementById("img_mostrarfile").setAttribute("src", URL.createObjectURL(file));
+                break;
+            case 3:
+                file = new Blob([view], {type: 'video/mp4'});
+                document.getElementById("img_mostrarfile").setAttribute("src", URL.createObjectURL(file));
+                break;
+            default:
+                break;
+        }
+    }
+</script>
+
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends 'index.html' %}
+{% import '/macros/archivo.html'as macro %}
 {% block view %}
     <section class="container-fluid card">
         <label class="text-start"><b>Periodo</b></label>
@@ -9,31 +10,21 @@
         <label class="text-start"><b>Tipo de Archivo</b></label>
         <form class="card-body input-group">
             <select id="sele_type" class="form-select" multiple>
-                <option value="mp4">MP4</option>
-                <option value="png">PNG</option>
-                <option value="jpeg">JPEG</option>
+                {% for formato in formatos %}
+                    {{ macro.seleGetFormats(formato.nombre, formato.tipo) }}
+                {% endfor  %}
             </select>
         </form>
     </section>
+    
     <section class="container-fluid card" id="page_view">
-        <div id="scroll" class="card-body" style="display: none;">
-            <div class="text-center">
-                <div class="spinner-border" role="status">
-                  <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        </div>
         <form id="form_displayfiles" class="card-body" style="display: block;">
             <div class="list-group">
+                {% for file in documentos %}
+                    {{ macro.listViewFiles(file) }}
+                {% endfor %}
             </div>
         </form>
     </section>
-    <!-- Modal para desplegar documento -->
-    <div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content" style="background-color: rgba(0, 0, 0, 0.75);">
-            </div>
-        </div>
-    </div>
-    <script type="module" src="../static/js/controller/view.js"></script>
+    <script src="{{ url_for('static', filename='js/controller/view.js') }}"></script>
 {% endblock %}

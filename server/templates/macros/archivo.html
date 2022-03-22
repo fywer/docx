@@ -1,0 +1,16 @@
+{% macro seleGetFormats(nombre, tipo) %}
+    <option value={{tipo}}> {{ nombre }}</option>
+{% endmacro %}
+
+{% macro listViewFiles(file) %}
+    <a class="list-group-item list-group-item-action" aria-current="true" id={{file.id}} href="/view?id={{file.id}}" >
+        <div class="d-flex w-100 justify-content-between">
+            <h6>{{ file.nombre }}</h6>
+        </div>
+        <small>{{ file.tipo }}</small>
+    </a>
+{% endmacro %}
+
+{% macro link(documento) %} 
+    <img class="img-fluid" src="{{ documento.tipo }}" />
+{% endmacro %}
