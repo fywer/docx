@@ -1,2 +1,2 @@
 # docx
-Servicio para guardar fotografías y videos.
+Servicio para guardar archivos.

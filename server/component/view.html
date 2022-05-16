@@ -1,0 +1,76 @@
+<section class="container my-1" id="page_view" >
+    
+    <div class="card">
+        
+        <form id="form_displayfiles" class="card-body" style="display: block;">            
+            <div class="list-group" ng-repeat="documento in documentos" >
+                <a class="list-group-item list-group-item-action" ng-init="id=documento.id"  aria-current="true" ng-click='mostrarDialogo(id)'>
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 ng-bind="id"> {{ documento.nombre }}</h6>
+                    </div>
+                    <small>{{ documento.tipo }}</small>
+                </a>   
+            </div>        
+        </form>  
+    
+    </div>
+
+</section>
+
+<!-- <a class="list-group-item list-group-item-action"  id="documento.id"  aria-current="true" ng-click='mostrarDialogo(id)'>
+    <div class="d-flex w-100 justify-content-between">
+        <h6 ng-bind="id"> {{ documento.nombre }}</h6>
+    </div>
+    <small>{{ documento.tipo }}</small>
+</a>  -->
+
+
+<!-- Modal para desplegar documento -->
+<!-- Page View File -->
+<!-- <div class="modal" id="view_file" tabindex="-1" aria-labelledby="viewFile" >
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content" >
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <img class="img-fluid" id="img_mostrarfile" src="" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" onclick="eliminar(documento.id)">Delete changes</button>
+            </div>
+        </div>
+    </div>
+</div> -->
+
+<!-- 
+    <section class="container card mt-5">
+        <label class="text-start"><b>Periodo</b></label>
+        <form class="card-body input-group">
+            <input id="bton_incio" class="form-control" type="date" />
+            <input id="bton_final" class="form-control" type="date" />
+        </form>
+        <label class="text-start"><b>Tipo de Archivo</b></label>
+        <form class="card-body input-group">
+            <select id="sele_type" class="form-select" multiple>
+
+            </select>
+        </form>
+    </section>
+     -->
+
+    <!-- <section ng-app="DocumentoService" class="container card" id="page_view" ng-controller="desplegarDocumentos">
+        <form id="form_displayfiles" class="card-body" style="display: block;">
+            <div class="list-group" ng-repeat="documento in documentos" >
+                <a class="list-group-item list-group-item-action" aria-current="true" id={{documento.id }} href="{{documento.ruta}}" >
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6>{{documento.nombre }}</h6>
+                    </div>
+                    <small>{{documento.tipo }}</small>
+                </a>   
+            </div>
+        </form>
+    </section>
+    <script src="js/controller/view.js"></script> -->

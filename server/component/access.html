@@ -1,0 +1,19 @@
+<div ng-app="CuentaService" ng-controller="autentificarCuenta" class="container card mt-5">
+  <form id="form_verificarUser" ng-submit="postData(email,password)" class="row row-cols-1 g-3 m-5 p-2" >
+    <div class="col">
+      <label for="ipt_email" class="form-label">Correo electrónico</label>
+      <input type="email" class="form-control" id="ipt_email" ng-model="email" required  placeholder="Correo electrónico">
+    </div>
+    <div class="col">
+      <label for="ipt_password" class="form-label">Contraseña</label>
+      <input type="password" class="form-control" id="ipt_password" ng-model="password" required placeholder="Contraseña">
+    </div>
+    <div class="col">
+      <a class="" src="#">Olvidé mi contraseña</a>
+    </div>
+    <div class="col">
+      <input type="submit" class="btn btn-primary" value="Entrar" form="form_verificarUser" />
+    </div>
+  </form>
+</div>
+<script src="../static/js/controller/access.js"></script>

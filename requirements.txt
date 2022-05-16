@@ -3,3 +3,8 @@ pyodbc
 flask
 flask_restful
 flask_sqlalchemy
+lxml=4.9.3
+pyOpenSSL
+pycryptodome   
+pydantic
+signxml=2.5.2
