@@ -15,7 +15,7 @@ log = logging.getLogger('')
 class DocumentoService: 
     __certpath = r'./server/config/EKU9003173C9.cer'
     __llavepath = r'./server/config/EKU9003173C9.key'
-    __repositoriopath = os.path.join("M:")
+    __repositoriopath = os.path.join("E:")
     
     def __init__(self):
         self.__dataMetadatoRepository = None
@@ -23,13 +23,17 @@ class DocumentoService:
         self.__certificadoService = None
         
         try:
-            self.__dataMetadatoRepository = MetadatoRepository()
+            # self.__dataMetadatoRepository = MetadatoRepository()
+            
             self.__certificadoService = CertificadoService(certificado=self.__certpath, llave=self.__llavepath)
         except Exception as e :
             raise Exception("Han ocurrido errores en el servicio.")
 
     def __getMetadatoRepository(self):
-        return self.__dataMetadatoRepository
+        if self.__dataMetadatoRepository is not None:
+            return self.__dataMetadatoRepository
+        else:
+            raise Exception("El repositorio no esta disponible.")
 
     def __getCertificadoService(self):
         if self.__certificadoService is not None:
@@ -71,9 +75,26 @@ class DocumentoService:
         except Exception as e:
             raise Exception(e)
 
-    def firmarCancelacion(self, xmlPath):
+    def firmarCancelacion(self, xmlPath, nombre):
         try:
-            self.__getCertificadoService().cancelar(xmlPath)
+            cancelacion = self.__getCertificadoService().cancelar(xmlPath)
+            archivoServiceCancelacion = ArchivoService(f"{xmlPath}.xml")
+            archivoServiceCancelacion.setArchivo(data=cancelacion)
+            xml = archivoServiceCancelacion.getArchivo()
+            comprobante = Comprobante(
+                estatus=1,
+                RFCEmisor='',
+                RFCReceptor='',
+                UUID='',
+                idTipoDocumento=0,
+                nombre=nombre,
+                tamanio=archivoServiceCancelacion.getTamanio(),
+                fechaEmision=str(datetime.now().isoformat())[:19],
+                cfdi=xml
+                )
+             
+            return comprobante
+        
         except Exception as e:
             log.warn(f"B2B: {e}\n")
             raise Exception("El comprobante no ha sido firmado")
@@ -100,11 +121,14 @@ class DocumentoService:
                 estatus=1,
                 RFCEmisor=self.__getCertificadoService().getRfcEmisor(),
                 RFCReceptor=self.__getCertificadoService().getRfcReceptor(),
+                UUID='',
                 idTipoDocumento=idTipoDocumento,
                 nombre=nombre,
                 tamanio=archivoServiceCfdi.getTamanio(),
-                fechaEmision=str(datetime.now().isoformat())[:19])
-            comprobante.cfdi=xml 
+                fechaEmision=str(datetime.now().isoformat())[:19],
+                cfdi=xml
+                )
+             
             return comprobante
         except Exception as e:
             log.warn(f"B2B: {e}\n")
@@ -127,7 +151,7 @@ class DocumentoService:
             if len(re.findall(patronComprobante, documento)) > 1:
                 return self.firmarComprobante(xmlPath, nombre)
             elif len(re.findall(patronCancelacion, documento)) > 1:
-                return self.firmarCancelacion(xmlPath)
+                return self.firmarCancelacion(xmlPath, nombre)
         except Exception as e:
             log.warn(f"B2B: {e}\n")
             raise Exception("La carga de los comprobante no fue exitosa.")

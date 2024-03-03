@@ -1,5 +1,5 @@
 import pyodbc
-import pymysql
+#import pymysql
 import logging
 import sys
 
