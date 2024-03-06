@@ -1,10 +1,10 @@
-# pymysql
+pymysql
 pyodbc
 flask
 flask_restful
+flask_sqlalchemy
+lxml=4.9.3
+pyOpenSSL
+pycryptodome   
 pydantic
-cryptography==2.9.2
-pyOpenSSL==17.5.0
-lxml==4.9.3
-pycryptodome==3.4.4 
-signxml==2.5.2
+signxml=2.5.2
