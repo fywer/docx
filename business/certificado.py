@@ -8,7 +8,7 @@ from Crypto.PublicKey import RSA
 
 import logging
 import sys
-#import signxml
+import signxml
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -113,10 +113,8 @@ class CertificadoService:
             signedInfo, signatureValue, keyInfo = signature.getchildren()
             x509Data = keyInfo.getchildren()
             tree = etree.ElementTree(signer_xml)
-            
-            tree.write("new_signed_file.xml")
             # KeyInfo =  genera_key_info()
-            log.info(f"CERT: {"El sistema ha generado xml firmado."}\n")
+            log.info(f"CERT: {'El sistema ha generado xml firmado.'}\n")
             return etree.tostring(tree, encoding="utf-8")
 
         except Exception as e:
