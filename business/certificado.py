@@ -1,4 +1,4 @@
-import os, re, base64
+import re, base64
 from datetime import datetime
 from lxml import etree
 from OpenSSL import crypto
@@ -99,25 +99,44 @@ class CertificadoService:
             raise Exception( "El documento no es un comprobante fiscal." )
 
     def cancelar(self, xmlPath):
+        # Define un diccionario de espacios de nombres.
         namespaces = {
             'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
             'xsd': 'http://www.w3.org/2001/XMLSchema'
         }
         try:
+            # Intenta leer un archivo XML ubicado en xmlPath y obtiene su raíz.
             cancelacion = etree.parse(xmlPath).getroot()
+            # Agrega un atributo "Fecha" al elemento raíz con la fecha y hora actuales.
             cancelacion.attrib['Fecha'] = str(datetime.now().isoformat())[:19]
+            # Firma el documento XML usando un algoritmo de firma RSA-SHA1 con el algoritmo de hash SHA1 y una forma canónica de C14N (canonización).
             signer = signxml.XMLSigner(signature_algorithm="rsa-sha1",digest_algorithm="sha1",c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
             signer.namespaces = {None: signxml.namespaces.ds}
             signer_xml = signer.sign(cancelacion, key=self._getLlaveData(self._getPathKey), cert=self._getCertificadoData(self._getPathCer))
+            # Obtiene ciertos elementos del documento firmado.
             folios, signature = signer_xml.getchildren()
             signedInfo, signatureValue, keyInfo = signature.getchildren()
             x509Data = keyInfo.getchildren()
+            # Obtiene el certificado en formato base64.
+            cert64 = self.__getCertificado64()
+            certificado = self.__getCertificadox509(cert64)
+
+            # Añade elementos adicionales al nodo de información de clave (KeyInfo) del certificado.
+            x509IssuerSerial = etree.SubElement(x509Data[0],'X509IssuerSerial')
+            x509IssuerName = etree.SubElement(x509IssuerSerial,'X509IssuerName')
+            x509IssuerName.text = '''OID.1.2.840.113549.1.9.2=responsable: ACDMA-SAT, OID.2.5.4.45=2.5.4.45, L=COYOACAN, S=CIUDAD DE MEXICO, C=MX, PostalCode=06370, STREET=3ra cerrada de caliz, E=oscar.martinez@sat.gob.mx, OU=SAT-IES Authority, O=SERVICIO DE ADMINISTRACION TRIBUTARIA, CN=AC UAT'''
+            x509SerialNumber = etree.SubElement(x509IssuerSerial,'X509SerialNumber')
+            x509SerialNumber.text = str(certificado.get_serial_number())
+            X509Certificate = etree.SubElement(x509Data[0], 'X509Certificate')
+            X509Certificate.text = cert64
             tree = etree.ElementTree(signer_xml)
-            # KeyInfo =  genera_key_info()
+            # Convierte el árbol de XML firmado en una cadena de bytes codificada en UTF-8.
+            xmlCancelacionData = etree.tostring(tree, encoding="utf-8")
             log.info(f"CERT: {'El sistema ha generado xml firmado.'}\n")
-            return etree.tostring(tree, encoding="utf-8")
+            return xmlCancelacionData 
 
         except Exception as e:
+            # Si se produce alguna excepción durante este proceso, se registra un mensaje de advertencia en el registro y se eleva una excepción con un mensaje indicando que la cancelación del comprobante no se ha realizado.
             log.warn(f"CERT: {e}\n")
             raise Exception("El comprobante no ha sido cancelado.")
 
@@ -125,39 +144,55 @@ class CertificadoService:
     def sellar(self, xmlPath):
         try:
             # self.isComprobante(xmlPath, self._getPathXSD)
+            # Obtiene la fecha y hora actual en formato ISO y la convierte en una cadena de longitud 19.
             fecha = str(datetime.now().isoformat())[:19]
+            # Intenta leer el archivo XML ubicado en xmlPath y Obtiene la raíz del árbol XML.
             arbol = etree.parse(xmlPath).getroot()
+            # Obtiene el certificado en formato base64 y su correspondiente objeto certificado.
             certificado64 = self.__getCertificado64()
-            certificado = self.__getCertificadox509(certificado64)
-            self.__nocertificadoHex = hex(certificado.get_serial_number())
+            certificadoX509 = self.__getCertificadox509(certificado64)
+            # Calcula el número de serie del certificado y lo convierte en formato hexadecimal.
+            self.__nocertificadoHex = hex(certificadoX509.get_serial_number())
+            # Obtiene el número de certificado usando el número de serie en formato hexadecimal
             noCertificado = self.__getNoCertificado(self.__nocertificadoHex)
-    
+
+            # Agrega atributos al elemento raíz del árbol XML que representan la fecha, el número de certificado y el certificado en formato base64.
             arbol.attrib['Fecha'] = fecha
             arbol.attrib['NoCertificado'] = noCertificado
             arbol.attrib['Certificado'] = certificado64
+
+            # Define un espacio de nombres para XPath.
             namespace = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
+
+            # Utiliza XPath para buscar y obtener los elementos "Emisor" y "Receptor" del XML.
             xpath_Emisor = "//cfdi:Emisor"
-            xpath_Receptor = "//cfdi:Receptor"
-            
+            xpath_Receptor = "//cfdi:Receptor" 
             elementoEmisor = arbol.xpath(xpath_Emisor, namespaces=namespace)
             elementoReceptor = arbol.xpath(xpath_Receptor, namespaces=namespace)
-            # Verificar si se encontr'ó el elemento
            
+            # Extrae el RFC (Registro Federal de Contribuyentes) tanto del emisor como del receptor y los almacena en las variables self.rfcEmisor y self.rfcReceptor, respectivamente.
             for element in elementoEmisor:
                 self.rfcEmisor = element.attrib['Rfc']
-            
             for element in elementoReceptor:
                 self.rfcReceptor = element.attrib['Rfc']
 
+            # Obtiene el tipo de comprobante del atributo 'TipoDeComprobante' del elemento raíz
             self.tipoDeComprobante = arbol.attrib['TipoDeComprobante']
 
+            # Calcula la cadena original del comprobante utilizando algún método interno (__getCadenaOriginal), que probablemente siga las reglas específicas del Servicio de Administración Tributaria (SAT) en México.
             cadenaOriginal = self.__getCadenaOriginal(arbol)
+
+            # Calcula el sello digital del comprobante utilizando algún método interno (__getSello), que probablemente utilice el certificado y la cadena original.
             sello = self.__getSello(cadenaOriginal)
             
+            # Agrega el sello digital al atributo 'Sello' del elemento raíz del árbol XML.
             arbol.attrib['Sello'] = sello
+
+            # Retorna la representación en bytes del árbol XML modificado.
             return etree.tostring(arbol, encoding="utf-8")
 
         except Exception as e:
+            # Si ocurre alguna excepción durante este proceso, se registra un mensaje de advertencia y se eleva una excepción con el mensaje indicando que el comprobante no ha sido sellado.
             log.warn(f"CERT: {e}\n")
             raise Exception("El comprobante no ha sido sellado.")
 

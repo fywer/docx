@@ -1,5 +1,5 @@
 # pymysql
-pyodbc
+# pyodbc
 flask
 flask_restful
 pydantic

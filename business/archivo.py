@@ -21,10 +21,12 @@ class ArchivoService:
     
     def setArchivo(self, data):
         try:
-            with open(self.getRuta(), mode="wb") as f:
-                f.write(data)  
-                log.info("El archivo ha sido almacenado en {0}".format(self.getRuta()))
-            self._tamanio = os.path.getsize(self.getRuta())
+            rutaArchivo = self.getRuta()
+            with open(rutaArchivo, mode="wb") as f:
+                cleanedBytes = data.replace(b'\r', b'').replace(b'\n', b'')
+                f.write(cleanedBytes)  
+                log.info("El archivo ha sido almacenado en {0}".format(rutaArchivo))
+            self._tamanio = os.path.getsize(rutaArchivo)
         except Exception as e:
             raise Exception(e)
 

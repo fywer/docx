@@ -15,11 +15,10 @@ log = logging.getLogger('')
 class DocumentoService: 
     __certpath = r'./server/config/EKU9003173C9.cer'
     __llavepath = r'./server/config/EKU9003173C9.key'
-    __repositoriopath = os.path.join("E:")
+    __repositoriopath = os.path.join("M:")
     
     def __init__(self):
         self.__dataMetadatoRepository = None
-        self.__archivoService = None
         self.__certificadoService = None
         
         try:
@@ -77,10 +76,11 @@ class DocumentoService:
 
     def firmarCancelacion(self, xmlPath, nombre):
         try:
-            cancelacion = self.__getCertificadoService().cancelar(xmlPath)
+            xmlCancelacionData = self.__getCertificadoService().cancelar(xmlPath)
             archivoServiceCancelacion = ArchivoService(f"{xmlPath}.xml")
-            archivoServiceCancelacion.setArchivo(data=cancelacion)
-            xml = archivoServiceCancelacion.getArchivo()
+            archivoServiceCancelacion.setArchivo(data=xmlCancelacionData)
+            xmlCancelacionB64 = archivoServiceCancelacion.getArchivo()
+
             comprobante = Comprobante(
                 estatus=1,
                 RFCEmisor='',
@@ -90,7 +90,7 @@ class DocumentoService:
                 nombre=nombre,
                 tamanio=archivoServiceCancelacion.getTamanio(),
                 fechaEmision=str(datetime.now().isoformat())[:19],
-                cfdi=xml
+                cfdi=xmlCancelacionB64
                 )
              
             return comprobante
@@ -99,6 +99,8 @@ class DocumentoService:
             log.warn(f"B2B: {e}\n")
             raise Exception("El comprobante no ha sido firmado")
     
+    tipoComprobanteToid  = lambda tipoComprobante: 1 if tipoComprobante == 'I' else (2 if tipoComprobante == 'E' else (99 if tipoComprobante == 'T' else (6 if tipoComprobante == 'P' else 3)))
+
     def firmarComprobante(self, xmlPath, nombre):
         try:
             cfdi = self.__getCertificadoService().sellar(xmlPath)
@@ -106,6 +108,7 @@ class DocumentoService:
             archivoServiceCfdi.setArchivo(data=cfdi)
             
             tipoComprobante = self.__getCertificadoService().getTipoComprobante()
+            
             if tipoComprobante == 'I':
                 idTipoDocumento = 1
             elif tipoComprobante == 'E':
