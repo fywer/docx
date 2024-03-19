@@ -1,9 +1,9 @@
 angular.module("DocumentoService", []).
-    factory ("mostrarModal", function () 
+factory ("mostrarModal", function () 
+{
+    var interfaz =
     {
-        var interfaz =
-        {
-            main : function (mensaje)
+        main : function (mensaje)
             {
                 this.mensaje = mensaje
             },
@@ -20,10 +20,40 @@ angular.module("DocumentoService", []).
         }
         return interfaz;
     })
-    .controller ("Documentos", function ($scope, $http, $window) 
+    .controller ("Documentos", function ($scope, $http, $window, $document, $compile) 
     {
-        angular.element($window).on('load', function () {})
-		$scope.fetchData = (urlapi, request) => {
+        $scope.documentos = []
+        $scope.$watch('documentos', function(newVal, oldVal) 
+        {
+            if (newVal !== oldVal) 
+            {
+                // $scope.$apply(function() 
+                // {
+                //     var template =  `<div class="list-group" ng-repeat="documentos in documentos" >
+                //     <a class="list-group-item list-group-item-action" ng-init="id=documento.nombre"  aria-current="true" ng-click='mostrarDialogo(id)'>
+                //         <div class="d-flex w-100 justify-content-between">
+                //             <h6 ng-bind="documento.fechaEmision"> {{ documento.RFCReceptor }}</h6>
+                //         </div>
+                //         <div>
+                //             <strong>RFCReceptor:</strong>
+                //         </div>
+                //         <small>{{ documento.rfcReceptor }}</small>
+                //     </a>   
+                // </div>`;
+                //     // Compilar el HTML con la directiva ng-repeat
+                //     var compiledHTML = $compile(template)($scope);
+                //     // Adjuntar el HTML compilado al DOM
+                //     angular.element(document.getElementById('form_displayfiles"')).append(compiledHTML);
+                // });
+                
+            }
+        }, true);
+        angular.element($window).on('load', function () 
+        {
+            console.log("He cargado :P ")
+        });
+		$scope.fetchData = (urlapi, request) => 
+        {
             return new Promise( (resolve, reject) =>
             {
                 fetch(urlapi, request).
@@ -35,39 +65,115 @@ angular.module("DocumentoService", []).
                     }
                     else
                     {
-                        console.error(response);
                         reject(response.json());
                     }
-                })
+                }).
+                catch(e =>
+                {
+                    console.log(e)
+                    reject(e.json());
+                });
             })
         };
 		$scope.setFile = (documento) => 
         {
-            return new Promise( (resolve, reject) => 
-            {
-                const request =
-                    
+            const request =
+                
+                {
+                    method : 'POST',
+                    body : JSON.stringify({'comprobante':documento}),
+                    headers :
                     {
-                        method : 'POST',
-                        body : JSON.stringify({'comprobante':documento}),
-                        headers :
-                        {
-                            'Content-Type' : 'application/json; charset=utf-8'
+                        'Content-Type' : 'application/json; charset=utf-8'
+                    }
+                }   
+			const uri = '/file';
+            $scope.fetchData(`${uri}`, request).
+            then( mensaje => 
+            {
+                $scope.documentos.unshift(mensaje);
+                console.log(mensaje)
+                alertify.success("Se ha almacenado:: "+mensaje["nombre"])
+                document.getElementById("bton_cargarfile").value = '';
+                const btonuploadfile = document.querySelector("input[form='form_agregarfile']")
+                $scope.descargarXML(mensaje["cfdiXml"], mensaje["nombre"] )
+                btonuploadfile.disabled = false;
+                btonuploadfile.value = "Upload"
+            }).
+            catch(e =>
+            {
+                e.then( err => 
+                {
+                    btonuploadfile = document.querySelector("input[form='form_agregarfile']");
+                    console.warn(err);
+                    if (err.codigo == '099')
+                    {
+                        
+                        if(!alertify.alertDelete) 
+                        { 
+                            //define a new dialog
+                            alertify.dialog('alertDelete',function ()
+                            {
+                                return {
+                                    main : function( doc )
+                                    {                               
+                                        this.doc = doc                            
+                                        
+                                    },
+                                    build : function()
+                                    {
+                                        // var errorHeader = '<span class="fa fa-info-circle fa-2x" '
+                                        // +    'style="vertical-align:middle;color:#e10000;">'
+                                        // + '</span> <strong>Información</strong>';
+                                        // this.setHeader(errorHeader);
+                                    },
+                                    hooks:
+                                    {
+                                        // triggered when the dialog is shown, this is seperate from user defined onshow
+                                        onshow: function()
+                                        {
+                                        }
+                                    },
+                                    setup : function() 
+                                    {
+                                        return {
+                                            options:{
+                                                startMaximized:true,
+                                                maximizable: false,
+                                                closable:false
+                                            },
+                                            focus: { element:0 }
+                                        };
+                                    },
+                                    prepare : function () 
+                                    {
+                                        if (this.doc !== undefined) 
+                                        {
+                                            var regex = /[0-9a-z]{64}/;
+                                            id = this.doc['descripcion'].match(regex)
+                                            if ( id !== null )
+                                            {
+                                                contenido = `
+                                                <input id="btnEliminar" hidden ng-click=${$scope.delFile(this.doc)}  type="button" value="Eliminar"/> 
+                                                `
+                                                this.setContent(contenido);
+                                            }
+                                        }
+                                    },
+                                }
+                            });
                         }
-                    }   
-				const uri = '/file';
-                $scope.fetchData(`${uri}`, request).
-                then( response => 
-                {
-                    resolve(response);
-                }).
-                catch(e =>
-                {
-                    reject(e);
-                });
+                        else 
+                        {
+                            alertify.warning('Por favor, intentalo mas tarde. Código: ' + err.descripcion)
+                            btonuploadfile.disabled = false;
+                            btonuploadfile.value = "Upload"
+                        }
+                        alertify.alertDelete(err);
+                    }
+                })
             });
-        }
-		 
+        };
 		$scope.uploadFile = () =>
 		{
 			btonuploadfile = document.querySelector("input[form='form_agregarfile']");
@@ -79,122 +185,67 @@ angular.module("DocumentoService", []).
 			try 
             {
                 if (files.length == 0) 
-                {
-                    window.alert("No ha seleccionado un archivo.");
-                    throw "No ha seleccionado un archivo.";
-                }
+                    throw {"descripcion": "No ha seleccionado un archivo."}
                 else
                 {
                     console.warn(files[0]);
-                    $scope.saveFile(files[0]).
-                    then( response =>
+                    file = files[0]
+                    let tipo = file["type"].split('/')[1]
+                    let type = 0;
+                    switch (tipo)
                     {
-                        //$scope.$apply = function () 
-                        //{
-                            $scope.documentos.push(response)
-                        //}
-                        console.log(response)
-                        alertify.success("Se ha almacenado:: "+response["nombre"])
-                        document.getElementById("bton_cargarfile").value = '';
-                        const btonuploadfile = document.querySelector("input[form='form_agregarfile']")
-                        $scope.descargarXML(response["cfdi"], response["nombre"] )
-                        btonuploadfile.disabled = false;
-                        btonuploadfile.value = "Upload"
-                    }).
-                    catch( error =>
+                        case 'xml':
+                            type = 1;
+                            break;
+                        default:
+                            type = 0;
+                    }
+                    if (type === 0)
                     {
-                        error.then(error => 
-                        {
-                            alertify.warning('Por favor, intentalo mas tarde. Código: ' + error['error'])
-                            btonuploadfile.disabled = false;
-                            btonuploadfile.value = "Upload"
-                        })
-                    });
+                        throw {"descripcion": "El fomato no es válido."}
+                    }
+                    else $scope.saveFile(file);  
                 }
             } 
-            catch (e)
+            catch (err)
             {
-                console.warn(e);
+                console.warn(err);
+                alertify.warning('Por favor, intentalo mas tarde. Código: ' + err.descripcion)
                 btonuploadfile.disabled = false;
                 btonuploadfile.value = "Upload";
                 return;
             }
-		}	
-		
+		};	
 		$scope.saveFile = (file) => 
 		{
-            return new Promise( (resolve, reject) => 
-            {
-                file.arrayBuffer().
-                then( buffer => {
-                    const blob = new Blob([new Uint8Array(buffer)], {type : file["type"]});
-                    const reader  = new FileReader();
-                    reader.onload = (event) =>
-                    {
-                        let xml64 = window.btoa(reader.result);
-                        let tipo = file["type"].split('/')[1]
-                        let type = 0;
-                        switch (tipo)
-                        {
-                            case 'xml':
-                                type = 1;
-                                break;
-                            default:
-                                type = 0;
-                        }
-                        if (type === 0)
-                        {
-                            reject("El fomato no es válido.");
-                        }
-                        else
-                        { 
-                            let decodeData = window.atob(xml64);
-                            let buffer = new ArrayBuffer(xml64.length);
-                            let view = new Uint8Array(buffer);
-                            for (let i = 0; i < xml64.length; i ++) {
-                                view[i] = decodeData.charCodeAt(i);
-                            }
-                            let file = NaN;
-                            console.log(type);
-                            switch (type) 
-                            {
-                                case 1:
-                                    file = new Blob([view], {type: 'text/xml'});
-                                    ruta = URL.createObjectURL(file);
-                                    break;
-                                default:
-                                    ruta = "#"
-                                    break;
-                            }
-                            console.log(file)
-                            let formagregarfile = document.querySelectorAll("#form_agregarfile"); 
-                            formagregarfile.forEach( item => 
-                            {
-                                item.disabled = true 
-                            });
-							
-                            $scope.setFile(xml64).
-                            then( mensaje =>
-                            {
-                                resolve(mensaje);
-                            }).
-                            catch( error => 
-                            {
-                                reject(error)
-
-                            });
-                        }   
-                    }
-                    reader.readAsBinaryString(blob);
-                }).
-                catch(e => 
+            file.arrayBuffer().
+            then( buffer => {
+                const blob = new Blob([new Uint8Array(buffer)], {type : file["type"]});
+                const reader  = new FileReader();
+                reader.onload = (event) =>
                 {
-                    console.error(e);
-                    window.alert('Por favor, intentalo mas tarde. Código: ' + e);
-                });
+                    let xml64 = window.btoa(reader.result);
+                    let decodeData = window.atob(xml64);
+                    let buffer = new ArrayBuffer(xml64.length);
+                    let view = new Uint8Array(buffer);
+                    for (let i = 0; i < xml64.length; i ++)
+                    {
+                        view[i] = decodeData.charCodeAt(i);
+                    }
+                    let file = NaN;
+                    file = new Blob([view], {type: 'text/xml'});
+                    ruta = URL.createObjectURL(file);
+                    console.log(file)
+                    let formagregarfile = document.querySelectorAll("#form_agregarfile"); 
+                    formagregarfile.forEach( item => 
+                    {
+                        item.disabled = true 
+                    });
+                    $scope.setFile(xml64);
+                }
+                reader.readAsBinaryString(blob);
             });
-        }
-		
+        };
 		$scope.showUpload = function ()
         {   
             const sect_upload = document.getElementById("sect_upload")
@@ -206,26 +257,117 @@ angular.module("DocumentoService", []).
             {
                 sect_upload.removeAttribute("hidden")
             }
-        }
-		
-        $scope.$watch('documentos', function(newVal, oldVal) {
-        
-            if (newVal !== oldVal) {
-              // Aquí puedes realizar acciones cuando la lista $scope.documentos cambie
-              console.log('La lista documentos ha cambiado:', newVal);
-            }
-        }, true);
-        
+        };
         $scope.base64ToBytes = function(base64)
         {
             const binString = atob(base64);
             return Uint8Array.from(binString, (m) => m.codePointAt(0));
-        }
+        };
         $scope.bytesToBase64 = function (bytes)
         {
             const binString = String.fromCodePoint(...bytes);
             return btoa(binString);
-          }
+        };
+        $scope.actualizarComprobante = (comprobante) =>
+        {
+            console.log(comprobante)
+            alertify.confirm(`${comprobante['nombre']}`, "<h6>¿Deseas Timbrar Comprobante?</h6>", 
+            function()
+            { 
+                const request =
+                {
+                    method : 'PUT',
+                    headers :
+                    {
+                        'Content-Type' : 'application/json; charset=utf-8',
+                    },
+                    body : JSON.stringify(comprobante),
+                }   
+			    const uri = '/file';
+                const data = $scope.fetchData(`${uri}`, request);
+                data.
+                then( response => 
+                {
+                    var documento = response;
+                    let nombre = documento['nombre']
+                    console.log("Se ha actualizado el documento " + nombre)
+                    alertify.success("El comprobante ha sido actualizado.");
+                    alertify.closeAll();
+                }).
+                catch(err =>
+                {
+                    err.then( e =>
+                    {
+                        alertify.warning('Por favor, intentalo mas tarde. Código: ' + e.descripcion)
+                        console.warn(e);
+                        alertify.closeAll();
+                    });
+                });
+                console.log('Se hizo clic en el botón');
+            },
+            function()
+            { 
+                alertify.warning('Se ha cancelado la actualización del comprobante.')
+                // alertify.closeAll();
+                return
+            });
+        
+        };
+        $scope.delFile = function (documento)
+        {
+            var regex = /[0-9a-z]{64}/;
+            id = documento['descripcion'].match(regex)
+            alertify.confirm(`${documento['descripcion']}`, "<h6>¿Deseas Eliminar Documento?</h6>", 
+            function()
+            { 
+                const request =
+                {
+                    method : 'DELETE',
+                    headers :
+                    {
+                        'Content-Type' : 'application/json; charset=utf-8'
+                    }
+                }   
+			    const uri = '/file/';
+                const data = $scope.fetchData(`${uri}${id}`, request);
+                let btonuploadfile = document.querySelector("input[form='form_agregarfile']");
+                data.
+                then( response => 
+                {
+                    var documento = response;
+                    let nombre = documento['nombre'];
+                    $scope.documentos = $scope.documentos.filter( function(valor) 
+                    {
+                        return nombre !== valor['nombre'];
+                    });
+                    console.log("Se ha eliminado el documento " + nombre)
+                    alertify.success("El comprobante hasido eliminado intenta de nuevo.");
+                    alertify.closeAll();
+                    btonuploadfile.disabled = false;
+                    document.getElementById("bton_cargarfile").value = '';
+                    btonuploadfile.value = "Upload";
+                }).
+                catch(err =>
+                {
+                    alertify.warning('Por favor, intentalo mas tarde. Código: ' + err.descripcion)
+                    btonuploadfile.disabled = false;
+                    btonuploadfile.value = "Upload"
+                    console.warn(err);
+                    alertify.closeAll();
+                });
+                console.log('Se hizo clic en el botón');
+                    // Aquí puedes agregar cualquier acción que desees que ocurra cuando se haga clic en el botón
+            },
+            function()
+            { 
+                let btonuploadfile = document.querySelector("input[form='form_agregarfile']");
+                alertify.warning('Se ha cancelado la eliminación del documento.')
+                btonuploadfile.disabled = false;
+                btonuploadfile.value = "Upload"
+                alertify.closeAll();
+                return
+            });
+        };
         $scope.descargarXML = function (xmlcomprobante, nombreArchivo)
         {
             // xmlbin = $scope.base64ToBytes(xmlcomprobante)
@@ -237,8 +379,7 @@ angular.module("DocumentoService", []).
             enlaceDescarga.download = nombreArchivo;
             enlaceDescarga.click();
             $window.URL.revokeObjectURL(urlArchivoXML)
-        }
-
+        };
         $scope.mostrarDialogo = function (id) 
         {
             if (id == undefined)
@@ -255,11 +396,32 @@ angular.module("DocumentoService", []).
                         return {
                             main : function( doc ) {                               
                                 this.doc = doc                            
+                            },
+                        build:function()
+                        {
+                            var errorHeader = '<span class="fa fa-info-circle fa-2x" '
+                            +    'style="vertical-align:middle;color:#e10000;">'
+                            + '</span> <strong>Información</strong>';
+                            this.setHeader(errorHeader);
                         },
-                        setup : function() {
-                            return { 
+                        hooks:
+                        {
+                            // triggered when the dialog is shown, this is seperate from user defined onshow
+                            onshow: function(){
+                                console.log("No soy una tetera.")
+                            }
+                        },
+                        setup : function()
+                        {
+                            return {
+                                options:{
+                                    startMaximized:true,
+                                    maximizable: false,
+                                    closable:false
+                                }, 
                                 buttons:[
                                 {
+                                    invokeOnClose: false,
                                     text: "Salir", 
                                     key:27/*Esc*/
                                 
@@ -267,17 +429,26 @@ angular.module("DocumentoService", []).
                                 focus: { element:0 }
                             };
                         },
-                        prepare : function () {
+                        prepare : function () 
+                        {
                             console.log(this.doc)
-                            contenido = `
-                                <h6>Hash ID</h6>
-                                <p> ${this.doc['nombre']} </p> 
-                                <h6>Resumen</h6>
-                                <p> ${this.doc['fecha']} </p>
-                                <button ng-click=${$scope.descargarXML( atob(this.doc['contenido']), this.doc['nombre']  )} > Descargar </button>
-                            `
-                            this.setContent(contenido);
-                        }
+                            if (this.doc !== undefined)
+                            {
+                                contenido = `
+                                    <h6>Hash ID</h6>
+                                    <p> ${this.doc['nombre']} </p> 
+                                    <h6>ID Tipo</h6>
+                                    <p> ${this.doc['idTipoDocumento']} </p> 
+                                    <h6><small>Cadena Original:</small></h6>
+                                    <textarea rows='8' readonly> ${this.doc['cadenaOriginal']} </textarea> 
+                                    <h6><small><b>   Emisión:</b> ${this.doc['fechaEmision']}</small></h6>
+                                    <h6><small><b>Timbrado:</b> ${this.doc['timbreFiscal']} </small></h6>
+                                    <a> <input type="button" hidden ng-click='${$scope.actualizarComprobante(this.doc)}'/></a>
+                                `
+                                this.setContent(contenido);
+                            }
+                        },
+                        
                     }});
                 }
                 const request =
@@ -302,11 +473,8 @@ angular.module("DocumentoService", []).
                     window.alert('Por favor, intentalo mas tarde. Código: ' + e);
                 });                   
             }  
-        }
-        
-        $scope.documentos = []
-        $http.get("/file").then
-        ( 
+        };
+        $http.get("/file").then ( 
             function (response) 
             {
                 console.log(response);
@@ -319,10 +487,10 @@ angular.module("DocumentoService", []).
                     alertify.warning("No se han encontrado documentos.");   
                 }            
             },
-            function (error) 
+            function (err)    
             {
-                alertify.error(error.data.msg);  
-                console.log(error) 
+                console.warn(err.data);
+                alertify.warning('Por favor, intentalo mas tarde. Código: ' + err.data.error)
             }
         )
     }

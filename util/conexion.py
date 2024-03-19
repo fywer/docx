@@ -1,4 +1,5 @@
-import pyodbc
+from pymongo import MongoClient
+#import pyodbc
 #import pymysql
 import logging
 import sys
@@ -9,6 +10,26 @@ logging.basicConfig(
     stream = sys.stderr 
 )
 log = logging.getLogger('')
+class MongoDB:
+    __instancia = None
+    __host = "cluster0"
+    __user = "ifywerz"
+    __password = "5S2ApQdMaod0s6Rl"
+    
+    def __new__(cls):
+        if cls.__instancia is not None:
+            return cls.__instancia
+        else:
+            #mongodb+srv://ifywerz:5S2ApQdMaod0s6Rl@cluster0.n3iivh4.mongodb.net/?retryWrites=true&w=majority
+            _url = f'mongodb+srv://{cls.__user}:{cls.__password}@{cls.__host}.n3iivh4.mongodb.net/?retryWrites=true&w=majority'
+            try:
+                cls.__instancia = MongoClient(_url)
+                log.info('Se ha establecido una nueva instancia MongoDB.') 
+                return cls.__instancia
+            except Exception as e:
+                log.warn(f"DRIVER: {e}\n")
+                raise Exception("Han ocurrido exepciones de conexión.")
+            
 class SQLServer:
     __instancia = None
     __host = "192.168.1.200"

@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
-from util.conexion import SQLServer
-# from interface.documento import IDocumentoData
-import logging, sys
-from datetime import date, datetime
+from util.conexion import MongoDB
+import logging, sys, pymongo
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -25,118 +23,62 @@ class IDocumentoData(ABC):
         pass
 
 class MetadatoRepository(IDocumentoData):
-    
     def __init__(self):
-        self.__db = SQLServer()
         try:
-            self.__cursor = self.__db.cursor()
+            self.__db = MongoDB()
+            self.__cursor = self.__db.ifywerz
         except Exception as e:
             log.warn(f"DATA: {e}\n")
             raise Exception("{0}".format(e))
     
     def __getEntity(self):
         return self.__cursor
-
-    def doInsert(self, documento):
-        sqlquery = f"INSERT INTO t_documento (estatus, RFCEmisor, RFCReceptor, UUID, idTipoDocumento, nombre, tamanio, fechaEmision) " 
-        sqlquery += f'''VALUES ('{documento['estatus']}',
-        '{documento['RFCEmisor']}',
-        '{documento['RFCReceptor']}', 
-        '{documento['UUID']}', 
-        '{documento['idTipoDocumento']}', 
-        '{documento['nombre']}', 
-        '{documento['tamanio']}', 
-        '{datetime.now().strftime( '%Y-%m-%dT%H:%M:%S' ) }');'''
+    
+    def findComprobanteByNombre(self, nombre):
         try:
-            log.info(sqlquery)
-            self.__getEntity().execute(sqlquery)
-            self.__getEntity().commit()
-        except Exception as e:
-            raise Exception("DATA: {0}".format(e))
-
-    def doDelete(self, id):
-        sqlquery = f"DELETE FROM t_documento WHERE id = {id};"
-        try:
-            log.info(sqlquery)
-            self.__getEntity().execute(sqlquery)
-            self.__getEntity().commit()
+            comprobanteT = self.__getEntity().comprobantes.find_one({"nombre" :nombre})
+            log.info(f"Se han encotrado en Atlas: {nombre}")
+            return comprobanteT
         except Exception as e:
             raise Exception("DATA: {0}".format(e))
     
-    def doSelect(self, id=False):
-        if id == False:
-            sqlquery = f"SELECT * FROM Documento ORDER BY fecha DESC;"
-            try:
-                log.info(sqlquery)
-                self.__getEntity().execute(sqlquery)
-                rows = self.__getEntity().fetchall()
-                documentos = list()
-                for data in rows:
-                    documento = {
-                        'id' : data[0],
-                        'nombre' : data[1],
-                        'tipo' : data[2],
-                        'tamanio': data[3],
-                        'fecha' : data[4].isoformat(),                     
-                        'ruta' : data[5],
-                    }
-                    documentos.append(documento)
-                return documentos
-            except Exception as e:
-                log.warn(f"DATA: {e}\n")
-                raise Exception("Han ocurrido excepciones en el repositorio.")
-        else:
-            sqlquery = f"SELECT * FROM t_documento WHERE id='{int(id)}';"
-            try:
-                log.info(sqlquery)
-                self.__getEntity().execute(sqlquery)
-                data = self.__getEntity().fetchone()
-                
-                if  data != None:
-                    return {
-                        'id' : data[0],
-                        'nombre' : data[1],
-                        'tipo' : data[2],
-                        'tamanio': data[3],
-                        'fecha' : data[4].isoformat(),                     
-                        'ruta' : data[5],
-                    }
-                else:
-                    return False
-            except Exception as e:
-                log.warn(f"DATA: {e}\n")
-                
-                raise Exception("DATA: {0}".format(e))
-
-    def findByType(self, tipo):
-        sqlquery = f"SELECT * FROM t_documento WHERE tipo='{tipo}';"
+    def doInsert(self, comprobante):
         try:
-            log.info(sqlquery)
-            self.__getEntity().execute(sqlquery)
-            rows = self.__getEntity().fetchall()
-            documentos = list()
-            for row in rows:
-                documentos.append(Documento(row))
-            return documentos
+            comp_dict = dict(comprobante)
+            id = self.__getEntity().comprobantes.insert_one(comp_dict).inserted_id       
+            log.info(f"Se han almacenado en Atlas: {comp_dict['nombre']}")
+            return id
         except Exception as e:
-            raise Exception(e)
+            raise Exception("DATA: {0}".format(e))
 
-    def findByDate(self, inicio, final):
-        i = date.fromisoformat(inicio)
-        f = date.fromisoformat(final)
-        diainicio, mesinicio, anioinicio = i.day, i.month, i.year
-        diafinal, mesfinal, aniofinal = f.day, f.month, f.year
-        sqlquery = f'''SELECT * FROM t_documento WHERE 
-        ( YEAR(fecha) >= {anioinicio} AND YEAR(fecha) <= {aniofinal} ) 
-        AND ( MONTH(fecha) >= {mesinicio} AND MONTH(fecha) <= {mesfinal} ) 
-        AND ( DAY(fecha) >= {diainicio} AND DAY(fecha) <= {diafinal} )'''
+    def doDelete(self, nombre):
         try:
-            log.info(sqlquery)
-            self.__getEntity().execute(sqlquery)
-            rows = self.__getEntity().fetchall()
-            documentos = list()
-            for row in rows:
-                documentos.append(Documento(row))
-            return documentos
+            c = self.__getEntity().comprobantes.find_one_and_delete({"nombre" :nombre})
+            if c is None:
+                log.warn(f"No se ha eliminado en Atlas: {nombre}")
+                raise Exception("No se ha eliminado registro.")
+            else:
+                log.info(f"Se han eliminado en Atlas: {nombre}")
+                return c
         except Exception as e:
-            raise Exception(e)
+            raise Exception("DATA: {0}".format(e))
+    
+    def doUpdate(self, comprobante):
+        try:
+            nombre = comprobante['nombre']
+            c = self.__getEntity().comprobantes.find_one_and_update({'nombre' : nombre },{ '$set' : comprobante})
+            if c is None:
+                log.warn(f"No se ha actualizado en Atlas: {nombre}")
+                raise Exception("No se ha encontrado registro.")
+            else:
+                log.info(f"Se han actualizado en Atlas: {nombre}")
+                return self.findComprobanteByNombre(nombre)
+        except Exception as e:
+            raise Exception("DATA: {0}".format(e))
+
+    def doSelect(self):
+        try:
+            comprobantes = self.__getEntity().comprobantes.find().sort('fechaEmision', pymongo.DESCENDING)
+            return comprobantes
+        except Exception as e:
+            raise Exception("DATA: {0}".format(e))  

@@ -131,9 +131,8 @@ class CertificadoService:
             X509Certificate.text = cert64
             tree = etree.ElementTree(signer_xml)
             # Convierte el árbol de XML firmado en una cadena de bytes codificada en UTF-8.
-            xmlCancelacionData = etree.tostring(tree, encoding="utf-8")
-            log.info(f"CERT: {'El sistema ha generado xml firmado.'}\n")
-            return xmlCancelacionData 
+            log.info(f"CERT: {'El sistema ha generado xml firmado.'}\n") 
+            return etree.tostring(tree, encoding="utf-8") 
 
         except Exception as e:
             # Si se produce alguna excepción durante este proceso, se registra un mensaje de advertencia en el registro y se eleva una excepción con un mensaje indicando que la cancelación del comprobante no se ha realizado.
@@ -231,8 +230,12 @@ class CertificadoService:
         xslt = etree.parse(self._getPathXLST)
         tranformar = etree.XSLT(xslt)
         cadenaOriginal = tranformar(arbol)
-        return str(cadenaOriginal)
+        self.cadena = str(cadenaOriginal)
+        return self.cadena
     
+    def _getCadenaOriginal(self):
+        return self.cadena
+
     def __getSello(self, cadenaOriginal):
         with open (self._getPathKey, 'r') as f:
             self.__privateKey = RSA.importKey(f.read())

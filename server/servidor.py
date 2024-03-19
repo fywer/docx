@@ -1,5 +1,4 @@
-from flask import Flask, request
-from flask import render_template
+from flask import Flask
 from flask_restful import Resource
 from flask_restful import Api
 from endpoint.documento import DocumentoEndPoint
@@ -20,7 +19,7 @@ class Servidor(Flask):
     
     def __new__(cls):
         api = Api(cls.app)
-        api.add_resource(DocumentoEndPoint,"/file", '/file'+'/<int:id>')
+        api.add_resource(DocumentoEndPoint,"/file", '/file'+'/<string:nombre>')
         api.add_resource(CuentaEndPoint, "/account")
         api.add_resource(UsuarioEndPoint, "/user",)
         # api.add_resource(DocumentoTipoORDateBO, cls.uri2)

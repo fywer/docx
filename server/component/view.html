@@ -4,12 +4,15 @@
         
         <form id="form_displayfiles" class="card-body" style="display: block;">            
             <div class="list-group" ng-repeat="documento in documentos" >
-                <a class="list-group-item list-group-item-action" ng-init="id=documento.id"  aria-current="true" ng-click='mostrarDialogo(id)'>
+                <a class="list-group-item list-group-item-action" ng-init="id=documento.nombre" aria-current="true" ng-click='mostrarDialogo(id)'>
                     <div class="d-flex w-100 justify-content-between">
-                        <h6 ng-bind="id"> {{ documento.nombre }}</h6>
+                        <h6 ng-bind="documento.fechaEmision"> {{ documento.RFCReceptor }}</h6>
                     </div>
-                    <small>{{ documento.tipo }}</small>
-                </a>   
+                    <div>
+                        <strong>RFCReceptor:</strong>
+                    </div>
+                    <small>{{ documento.rfcReceptor }}</small>
+                </a>
             </div>        
         </form>  
     
