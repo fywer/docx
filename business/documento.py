@@ -3,7 +3,7 @@ from lxml import etree
 from business.archivo import ArchivoService
 from business.certificado import CertificadoService
 from data.documento import MetadatoRepository
-from model.comprobante import Comprobante
+from model.comprobante import Comprobante, ErrorComprobante
 from datetime import datetime
 
 logging.basicConfig(
@@ -22,8 +22,7 @@ class DocumentoService:
         self.__certificadoService = None
         
         try:
-            # self.__dataMetadatoRepository = MetadatoRepository()
-            
+            self.__dataMetadatoRepository = MetadatoRepository()
             self.__certificadoService = CertificadoService(certificado=self.__certpath, llave=self.__llavepath)
         except Exception as e :
             raise Exception("Han ocurrido errores en el servicio.")
@@ -40,47 +39,12 @@ class DocumentoService:
         else:
             raise Exception("El servicio de certificación no esta disponible.")
 
-    def getAllDocumentos(self):
-        try:
-           documentos = self.__getMetadatoRepository().doSelect()
-           return documentos
-        except Exception as e:
-            log.warn(f"B2B: {e}\n")
-            raise Exception("La búsqueda de los comprobante no fue exitosa.")
-        
-    def getDocumento(self, id):
-        try:
-            documento = self.__getMetadatoRepository().doSelect(id)
-            if documento is False:
-                return
-                {
-                    "msg:": "No se han encontrado registros."
-                }
-            else:
-                nombre = documento["nombre"]+".xml"
-                documento["contenido"] = self.__getArchivoService().getArchivo(nombre) 
-                documento["ruta"] = self.__getArchivoService().getRuta(nombre)
-                return documento
-        except Exception as e:
-            raise Exception("ADVERTENCIA {0}".format(e))
-
-    def deleteDocumento(self,id):
-        try:
-            metadata = self.__getMetadatoRepository().doSelect(id)
-            self.__getMetadatoRepository().doSelect(metadata['id'])
-            log.info("Los metadatos han sido eliminados en sqlserver.")                
-            ruta = self.__getArchivoService().deleteArchivo(metadata['nombre'])
-            log.info("El archivo ha sido eliminado en mysql.")
-        except Exception as e:
-            raise Exception(e)
-
-    def firmarCancelacion(self, xmlPath, nombre):
+    def _firmarCancelacion(self, xmlPath, nombre):
         try:
             xmlCancelacionData = self.__getCertificadoService().cancelar(xmlPath)
             archivoServiceCancelacion = ArchivoService(f"{xmlPath}.xml")
             archivoServiceCancelacion.setArchivo(data=xmlCancelacionData)
             xmlCancelacionB64 = archivoServiceCancelacion.getArchivo()
-
             comprobante = Comprobante(
                 estatus=1,
                 RFCEmisor='',
@@ -92,7 +56,6 @@ class DocumentoService:
                 fechaEmision=str(datetime.now().isoformat())[:19],
                 cfdi=xmlCancelacionB64
                 )
-             
             return comprobante
         
         except Exception as e:
@@ -101,7 +64,7 @@ class DocumentoService:
     
     tipoComprobanteToid  = lambda tipoComprobante: 1 if tipoComprobante == 'I' else (2 if tipoComprobante == 'E' else (99 if tipoComprobante == 'T' else (6 if tipoComprobante == 'P' else 3)))
 
-    def firmarComprobante(self, xmlPath, nombre):
+    def _firmarComprobante(self, xmlPath, nombre):
         try:
             cfdi = self.__getCertificadoService().sellar(xmlPath)
             archivoServiceCfdi = ArchivoService(f"{xmlPath}.xml")
@@ -136,9 +99,36 @@ class DocumentoService:
         except Exception as e:
             log.warn(f"B2B: {e}\n")
             raise Exception("El comprobante no ha sido firmado.")
-                
-            self.__getMetadatoRepository().doInsert(metadata)
-            log.info("Los metadatos han sido almacenados en SQLServer.") 
+
+    def getAllDocumentos(self):
+        comprobantes = []
+        try:
+           documentos = self.__getMetadatoRepository().doSelect()
+           for documento in documentos:
+                del documento['cfdi']
+                c = Comprobante(**documento)
+                c.cfdi = None
+                comprobantes.append(c.dict())
+           return comprobantes
+        except Exception as e:
+            log.warn(f"B2B: {e}\n")
+            raise Exception("La búsqueda de los comprobante no fue exitosa.")
+        
+    def getDocumento(self, nombre):
+        try:
+            documento = self.__getMetadatoRepository().findComprobanteByNombre(nombre)
+            if documento is None :
+                errorComprobante = ErrorComprobante(**{'codigo':'001','info':'El comprobante no ha sido encontrado.'})
+                log.warn(f"B2B: No se ha encontrado: {nombre}\n")
+                return errorComprobante.dict()
+            else:
+                comprobante = Comprobante(**documento)
+                comprobante.cfdi = None
+                log.info(f"B2B: Se ha encontrado: {documento['_id']}\n")
+                return comprobante.dict()
+        except Exception as e:
+            log.warn(f"B2B: {e}\n")
+            raise Exception("La búsqueda del comprobante no fue exitosa.")
 
     def setDocumento(self, archivo):
         try:
@@ -152,9 +142,49 @@ class DocumentoService:
             patronComprobante = r"cfdi:Comprobante"
             patronCancelacion = r"Cancelacion"
             if len(re.findall(patronComprobante, documento)) > 1:
-                return self.firmarComprobante(xmlPath, nombre)
+                model_comprobante = self._firmarComprobante(xmlPath, nombre)
+                id = self.__getMetadatoRepository().doInsert(model_comprobante)
+                log.info(f"El comprobante han sido almacenado en el repositorio. {id}") 
+                return model_comprobante.dict()
             elif len(re.findall(patronCancelacion, documento)) > 1:
-                return self.firmarCancelacion(xmlPath, nombre)
+                model_comprobante = self._firmarCancelacion(xmlPath, nombre)
+                id = self.__getMetadatoRepository().doInsert(model_comprobante)
+                log.info(f"El comprobante han sido almacenado en el repositorio. {id}") 
+                return model_comprobante.dict()
         except Exception as e:
             log.warn(f"B2B: {e}\n")
             raise Exception("La carga de los comprobante no fue exitosa.")
+    
+    def updateDocumento(self, comprobante, archivo):
+        try:
+            nombre = hashlib.new(name="sha256", data=archivo).hexdigest()
+            comprobante['nombre'] = nombre
+            documento = self.__getMetadatoRepository().doUpdate(nombre, comprobante)
+            comprobante = Comprobante(**documento)
+            del documento['cdfi']
+            comprobante.cfdi = None
+            return comprobante.dict()
+        except Exception as e:
+            log.warn(f"B2B: {e}\n")
+            raise Exception("La actualizacion del comprobante no fue exitosa.")
+    
+    def deleteDocumento(self, nombre):
+        try:
+            documento = self.__getMetadatoRepository().doDelete(nombre)
+            if documento is None :
+                errorComprobante = ErrorComprobante(**{'codigo':'002','info':'El comprobante no ha sido eliminado.'})
+                log.warn(f"B2B: No se ha eliminado: {nombre}\n")
+                return errorComprobante.dict()
+            else:
+                xmlPath = os.path.join(self.__repositoriopath,nombre) 
+                archivoServiceTemp = ArchivoService(xmlPath)
+                log.info("Los metadatos han sido eliminados del repositorio.")                
+                archivoServiceTemp.deleteArchivo()
+                log.info("El archivo ha sido eliminado del disco.")
+                c = Comprobante(**documento)
+                c.cfdi = None
+                return c.dict()
+        
+        except Exception as e:
+            log.warn(f"B2B: {e}\n")
+            raise Exception("El comprobante no ha sido eliminado.")

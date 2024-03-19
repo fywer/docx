@@ -7,12 +7,9 @@ logging.basicConfig(
 )
 log = logging.getLogger('')
 class ArchivoService:
-    
     def __init__(self,ruta):
         self.__ruta = ruta
-        if os.path.isfile(self.__ruta):
-            raise Exception(f"El archivo {self.__ruta} existe.")
-    
+        
     def getTamanio(self):
         return self._tamanio
 
@@ -21,12 +18,15 @@ class ArchivoService:
     
     def setArchivo(self, data):
         try:
-            rutaArchivo = self.getRuta()
-            with open(rutaArchivo, mode="wb") as f:
-                cleanedBytes = data.replace(b'\r', b'').replace(b'\n', b'')
-                f.write(cleanedBytes)  
-                log.info("El archivo ha sido almacenado en {0}".format(rutaArchivo))
-            self._tamanio = os.path.getsize(rutaArchivo)
+            if os.path.isfile(self.__ruta):
+                raise Exception(f"El archivo {self.__ruta} existe.")
+            else:
+                rutaArchivo = self.getRuta()
+                with open(rutaArchivo, mode="wb") as f:
+                    cleanedBytes = data.replace(b'\r', b'').replace(b'\n', b'')
+                    f.write(cleanedBytes)  
+                    log.info("El archivo ha sido almacenado en {0}".format(rutaArchivo))
+                self._tamanio = os.path.getsize(rutaArchivo)
         except Exception as e:
             raise Exception(e)
 
@@ -41,10 +41,13 @@ class ArchivoService:
         archivo = base64.b64encode(binarios)
         return archivo.decode('ISO-8859-1')
     
-    def deleteArchivo(self, nombre):
-        self.__ruta = os.path.join(self.__basepath,nombre)
-        if os.path.isfile(self.__ruta):
-            os.remove
-            log.info("El documento han sido eliminado en disco.")
-        else:
-            raise Exception("El documento no existe.")            
+    def deleteArchivo(self):
+        try:
+            self.__ruta = os.path.join(self.getRuta())
+            if os.path.isfile(self.__ruta):
+                os.remove(self.__ruta)
+                log.info("El documento han sido eliminado en disco.")
+            else:
+                raise Exception("El documento no existe.")
+        except Exception as e:
+            raise Exception(e)
