@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from util.conexion import MongoDB
+from util.connect import MongoAtlas
 import logging, sys, pymongo
 
 logging.basicConfig(
@@ -8,24 +8,28 @@ logging.basicConfig(
     stream = sys.stderr 
 )
 log = logging.getLogger('')
-class IDocumentoData(ABC):
+class IComprobanteData(ABC):
 
     @abstractmethod
-    def doInsert(self, documento):
+    def doInsert(self, comprobante):
         pass
 
     @abstractmethod
-    def doDelete(self, id):
+    def doDelete(self, nombre):
         pass
 
     @abstractmethod
-    def doSelect(self, id=False):
+    def doSelect(self, nombre=False):
+        pass
+    
+    @abstractmethod
+    def doUpdate(self, comprobante):
         pass
 
-class MetadatoRepository(IDocumentoData):
+class ComprobanteRepository(IComprobanteData):
     def __init__(self):
         try:
-            self.__db = MongoDB()
+            self.__db = MongoAtlas()
             self.__cursor = self.__db.ifywerz
         except Exception as e:
             log.warn(f"DATA: {e}\n")
@@ -56,7 +60,7 @@ class MetadatoRepository(IDocumentoData):
             c = self.__getEntity().comprobantes.find_one_and_delete({"nombre" :nombre})
             if c is None:
                 log.warn(f"No se ha eliminado en Atlas: {nombre}")
-                raise Exception("No se ha eliminado registro.")
+                raise Exception("El comprobante no existe en la base.")
             else:
                 log.info(f"Se han eliminado en Atlas: {nombre}")
                 return c
@@ -69,7 +73,7 @@ class MetadatoRepository(IDocumentoData):
             c = self.__getEntity().comprobantes.find_one_and_update({'nombre' : nombre },{ '$set' : comprobante})
             if c is None:
                 log.warn(f"No se ha actualizado en Atlas: {nombre}")
-                raise Exception("No se ha encontrado registro.")
+                raise Exception("No se ha encontrado el comprobante en la base.")
             else:
                 log.info(f"Se han actualizado en Atlas: {nombre}")
                 return self.findComprobanteByNombre(nombre)
@@ -81,4 +85,4 @@ class MetadatoRepository(IDocumentoData):
             comprobantes = self.__getEntity().comprobantes.find().sort('fechaEmision', pymongo.DESCENDING)
             return comprobantes
         except Exception as e:
-            raise Exception("DATA: {0}".format(e))  
+            raise Exception("DATA: {0}".format(e))      

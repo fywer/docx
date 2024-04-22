@@ -106,8 +106,7 @@ factory ("mostrarModal", function ()
                 {
                     btonuploadfile = document.querySelector("input[form='form_agregarfile']");
                     console.warn(err);
-                    if (err.codigo == '099')
-                    {
+                    
                         
                         if(!alertify.alertDelete) 
                         { 
@@ -150,7 +149,7 @@ factory ("mostrarModal", function ()
                                         if (this.doc !== undefined) 
                                         {
                                             var regex = /[0-9a-z]{64}/;
-                                            id = this.doc['descripcion'].match(regex)
+                                            id = this.doc['error']['descripcion'].match(regex)
                                             if ( id !== null )
                                             {
                                                 contenido = `
@@ -170,7 +169,7 @@ factory ("mostrarModal", function ()
                             btonuploadfile.value = "Upload"
                         }
                         alertify.alertDelete(err);
-                    }
+                    
                 })
             });
         };

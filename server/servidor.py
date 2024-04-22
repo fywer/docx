@@ -1,10 +1,8 @@
 from flask import Flask
-from flask_restful import Resource
 from flask_restful import Api
-from endpoint.documento import DocumentoEndPoint
-from endpoint.usuario import UsuarioEndPoint
-from endpoint.cuenta import CuentaEndPoint
+from endpoint.comprobante import ComprobanteEndPoint
 import logging, sys, os
+from util.config import CONFIG
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -12,18 +10,15 @@ logging.basicConfig(
     stream = sys.stderr 
 )
 log = logging.getLogger('')
-class Servidor(Flask):
-    __root = '/'
-    __uri = __root + ''
+class ServidorWeb(Flask):
     app = Flask(__name__)
-    
+    api = Api(app)
+    api.add_resource(ComprobanteEndPoint,"/file", '/file'+'/<string:nombre>')
+
     def __new__(cls):
-        api = Api(cls.app)
-        api.add_resource(DocumentoEndPoint,"/file", '/file'+'/<string:nombre>')
-        api.add_resource(CuentaEndPoint, "/account")
-        api.add_resource(UsuarioEndPoint, "/user",)
-        # api.add_resource(DocumentoTipoORDateBO, cls.uri2)
-        cls.app.run(host='0.0.0.0', port=8081, debug=True)
+        __host = CONFIG["server.web"]["host"]
+        __port = CONFIG["server.web"]["port"]
+        cls.app.run(host=__host, port=__port, debug=True)
         
     def __init__(self):
         pass
@@ -35,7 +30,6 @@ class Servidor(Flask):
         with open(cloud, "r") as f:
             binarios = f.read()
         return binarios
-
 
     @app.route("/upload", methods=['GET'])
     def upload():
@@ -68,19 +62,3 @@ class Servidor(Flask):
         with open(cloud, "r") as f:
             binarios = f.read()
         return binarios
-
-    # @app.route("/access", methods=['GET'])
-    # def access():
-    #     return render_template('access.html')
-
-    # @app.route("/subscribe", methods=['GET'])
-    # def subscribe():
-    #     return render_template('subscribe.html')
-
-    # @app.route("/upload", methods=['GET'])
-    # def upload():
-    #     return render_template('upload.html')
-    
-    # @app.route("/view", methods=['GET'])
-    # def modal():
-    #     return render_template('modal.html')

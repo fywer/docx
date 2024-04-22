@@ -1,11 +1,21 @@
-import logging, sys, hashlib, base64, datetime, os
-from model.archivo import StatusArchivo
+import logging, sys, base64, os
+from pydantic import BaseModel
+
 logging.basicConfig(
     level = logging.DEBUG,
     format = '%(levelname)7s %(message)s',
     stream = sys.stderr 
 )
 log = logging.getLogger('')
+
+class StatusArchivo(BaseModel):
+    codigo: str
+    descripcion: str
+    descripcionTecnica: str = None
+    resultado: bool 
+
+class Archivo(BaseModel):
+    tamanio: int
 
 class ArchivoServiceError(Exception):
     def __init__(self, mensaje="Ocurrió un error."):
@@ -24,8 +34,8 @@ class ArchivoService:
     
     def setArchivo(self, data):
         if os.path.isfile(self.__ruta):
-            sts = StatusArchivo(**{'codigo':'099','descripcion' : f"El archivo {self.__ruta} existe.", 'descripcionTecnica':'', 'resultado':False }).dict()
-            raise ArchivoServiceError(sts)
+            sts = StatusArchivo(**{'codigo':'099','descripcion' : f"El archivo {self.__ruta} existe.", 'descripcionTecnica':'', 'resultado':False })
+            raise ArchivoServiceError(sts.dict())
         else:
             try:
                 rutaArchivo = self.getRuta()

@@ -1,8 +1,8 @@
 # pymysql
 # pyodbc
-flask
+flask==3.0.2
 flask_restful
-pydantic
+pydantic==2.6.3
 cryptography==2.9.2
 pyOpenSSL==17.5.0
 lxml==4.9.3

@@ -5,10 +5,8 @@ from OpenSSL import crypto
 from Crypto.Hash import SHA256
 from Crypto.Signature  import PKCS1_v1_5
 from Crypto.PublicKey import RSA
-
-import logging
-import sys
-import signxml
+import logging, sys, signxml
+from util.config import CONFIG
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -17,72 +15,46 @@ logging.basicConfig(
 )
 log = logging.getLogger('')
 class CertificadoService:
-    # __xlstpath = 'http://www.sat.gob.mx/sitio_internet/cfd/3/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt'
-    # __xlstpath = os.path.join("E:", "Data", "xslt", "sat.gob.mx_sitio_internet_cfd_4_cadenaoriginal_4_0.xslt")
-    BEGIN_CERTIFICATE = '-----BEGIN CERTIFICATE-----\n'
-    END_CERTIFICATE = '\n-----END CERTIFICATE-----\n'
-    DEBUG = False
-    __xsdpath = r'./server/config/xsd/cfdv40.xsd'
-    #__xsdpath = r'./server/config/xsd/ComercioExterior20.xsd'
-    __xlstpath = r'./server/config/xlst/cadenaoriginal_4_0.xslt'
-
-    def __init__(self, certificado, llave, Debug=None):
-        self.__pathCertificado = certificado
-        self.__pathKey = self.__getCertificadox509PrivateKey(llave)
-        self.__pathCer = self.__getCertificadox509PublicKey(certificado)
-        if Debug is not None:
-            self.DEBUG = Debug
-    
-    @property
-    def _getPathXSD(self):
-        return self.__xsdpath
-    
-    @property
-    def _getPathXLST(self):
-        return self.__xlstpath
+    # __xsdpath = r'./server/config/xsd/ComercioExterior20.xsd'
+    def __init__(self, cert, key):
+        self.__pathCert = cert
+        self.__pathPemKey = self.__getCertificadox509PrivateKey(key)
+        self.__pathPemCer = self.__getCertificadox509PublicKey(cert)
 
     @property
-    def _getPathKey(self):
-        return self.__pathKey
+    def _getPathPemKey(self):
+        return self.__pathPemKey
     
     @property
-    def _getPathCer(self):
-        return self.__pathCer
+    def _getPathPemCer(self):
+        return self.__pathPemCer
     
     @property
-    def _getPathCertificado(self):
-        return self.__pathCertificado
-    
-    def getRfcEmisor(self):
-        return self.rfcEmisor
-    
-    def getRfcReceptor(self):
-        return self.rfcReceptor
-    
-    def getTipoComprobante(self):
-        return self.tipoDeComprobante
+    def _getPathCert(self):
+        return self.__pathCert
     
     def __getCertificadox509PublicKey(self, certpath):
         key = RSA.import_key(open(certpath, "rb").read())
         pu_key_string = key.exportKey()
-        with open ("./server/config/PUB_EKU9003173C9.pem", "w") as pub_file:
+        with open ("./server/config/PUB.pem", "w") as pub_file:
             print("{}".format(pu_key_string.decode()), file=pub_file)
-        return "./server/config/PUB_EKU9003173C9.pem"
+        return "./server/config/PUB.pem"
 
-    def __getCertificadox509PrivateKey(self, llavepath, passw="12345678a"):
-        key = RSA.import_key(open(llavepath, "rb").read(), passphrase=passw)
+    def __getCertificadox509PrivateKey(self, keypath):
+        __passw = CONFIG["service.certificado"]["passw"]
+        key = RSA.import_key(open(keypath, "rb").read(), passphrase=__passw)
         pv_key_string = key.exportKey()
-        with open ("./server/config/PRI_EKU9003173C9.pem", "w") as prv_file:
+        with open ("./server/config/PRI.pem", "w") as prv_file:
             print("{}".format(pv_key_string.decode()), file=prv_file)
-        return "./server/config/PRI_EKU9003173C9.pem"
+        return "./server/config/PRI.pem"
 
-    def _getCertificadoData(self, rutaCertificado):    
-        with open(rutaCertificado, 'rb') as f:
+    def _getCertData(self, pathpemcer):    
+        with open(pathpemcer, 'rb') as f:
             __dataCert = f.read()
         return __dataCert
     
-    def _getLlaveData(self, rutaLlave):    
-        with open (rutaLlave, 'rb') as f:
+    def _getKeyData(self, pathpemkey):    
+        with open (pathpemkey, 'rb') as f:
             __privateKey = f.read()
         return __privateKey
     
@@ -99,20 +71,16 @@ class CertificadoService:
             raise Exception( "El documento no es un comprobante fiscal." )
 
     def cancelar(self, xmlPath):
-        # Define un diccionario de espacios de nombres.
-        namespaces = {
-            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
-            'xsd': 'http://www.w3.org/2001/XMLSchema'
-        }
         try:
             # Intenta leer un archivo XML ubicado en xmlPath y obtiene su raíz.
             cancelacion = etree.parse(xmlPath).getroot()
             # Agrega un atributo "Fecha" al elemento raíz con la fecha y hora actuales.
-            cancelacion.attrib['Fecha'] = str(datetime.now().isoformat())[:19]
+            cancelacion.attrib['Fecha'] = "2024-07-02T20:10:38"
+            # cancelacion.attrib['Fecha'] = str(datetime.now().isoformat())[:19]
             # Firma el documento XML usando un algoritmo de firma RSA-SHA1 con el algoritmo de hash SHA1 y una forma canónica de C14N (canonización).
             signer = signxml.XMLSigner(signature_algorithm="rsa-sha1",digest_algorithm="sha1",c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
             signer.namespaces = {None: signxml.namespaces.ds}
-            signer_xml = signer.sign(cancelacion, key=self._getLlaveData(self._getPathKey), cert=self._getCertificadoData(self._getPathCer))
+            signer_xml = signer.sign(cancelacion, key=self._getKeyData(self._getPathPemKey), cert=self._getCertData(self._getPathPemCer))
             # Obtiene ciertos elementos del documento firmado.
             folios, signature = signer_xml.getchildren()
             signedInfo, signatureValue, keyInfo = signature.getchildren()
@@ -142,7 +110,8 @@ class CertificadoService:
 
     def sellar(self, xmlPath):
         try:
-            # self.isComprobante(xmlPath, self._getPathXSD)
+            # __xsdpath = CONFIG["service.certificado"]["xsdpath"]
+            # self.isComprobante(xmlPath, __xsdpath)
             # Obtiene la fecha y hora actual en formato ISO y la convierte en una cadena de longitud 19.
             fecha = str(datetime.now().isoformat())[:19]
             # Intenta leer el archivo XML ubicado en xmlPath y Obtiene la raíz del árbol XML.
@@ -160,26 +129,8 @@ class CertificadoService:
             arbol.attrib['NoCertificado'] = noCertificado
             arbol.attrib['Certificado'] = certificado64
 
-            # Define un espacio de nombres para XPath.
-            namespace = {'cfdi': 'http://www.sat.gob.mx/cfd/4'}
-
-            # Utiliza XPath para buscar y obtener los elementos "Emisor" y "Receptor" del XML.
-            xpath_Emisor = "//cfdi:Emisor"
-            xpath_Receptor = "//cfdi:Receptor" 
-            elementoEmisor = arbol.xpath(xpath_Emisor, namespaces=namespace)
-            elementoReceptor = arbol.xpath(xpath_Receptor, namespaces=namespace)
-           
-            # Extrae el RFC (Registro Federal de Contribuyentes) tanto del emisor como del receptor y los almacena en las variables self.rfcEmisor y self.rfcReceptor, respectivamente.
-            for element in elementoEmisor:
-                self.rfcEmisor = element.attrib['Rfc']
-            for element in elementoReceptor:
-                self.rfcReceptor = element.attrib['Rfc']
-
-            # Obtiene el tipo de comprobante del atributo 'TipoDeComprobante' del elemento raíz
-            self.tipoDeComprobante = arbol.attrib['TipoDeComprobante']
-
-            # Calcula la cadena original del comprobante utilizando algún método interno (__getCadenaOriginal), que probablemente siga las reglas específicas del Servicio de Administración Tributaria (SAT) en México.
-            cadenaOriginal = self.__getCadenaOriginal(arbol)
+            # Calcula la cadena original del comprobante utilizando algún método interno (__doCadenaOriginal), que probablemente siga las reglas específicas del Servicio de Administración Tributaria (SAT) en México.
+            cadenaOriginal = self.__doCadenaOriginal(arbol)
 
             # Calcula el sello digital del comprobante utilizando algún método interno (__getSello), que probablemente utilice el certificado y la cadena original.
             sello = self.__getSello(cadenaOriginal)
@@ -195,20 +146,17 @@ class CertificadoService:
             log.warn(f"CERT: {e}\n")
             raise Exception("El comprobante no ha sido sellado.")
 
-    def __getCertificadoPem(self):
-        with open(self._getPathCertificadoPem, 'rb') as f:
-            dataCert = f.read()
-        return dataCert
-
     def __getCertificado64(self):
-        with open(self._getPathCertificado, 'rb') as f:
+        with open(self._getPathCert, 'rb') as f:
             datacert = f.read()
         cert64 = base64.b64encode(datacert)
         return cert64.decode('utf-8')
 
     def __getCertificadox509(self, certificado64):
+        BEGIN_CERTIFICATE = '-----BEGIN CERTIFICATE-----\n'
+        END_CERTIFICATE = '\n-----END CERTIFICATE-----\n'
         cert64string = re.sub('(.{64})', '\\1\n', certificado64, 0, re.DOTALL)
-        cert64WithBE = self.BEGIN_CERTIFICATE + cert64string + self.END_CERTIFICATE
+        cert64WithBE = BEGIN_CERTIFICATE + cert64string + END_CERTIFICATE
         certificado = crypto.load_certificate(crypto.FILETYPE_PEM, cert64WithBE.encode("ISO-8859-1"))
         return certificado
 
@@ -226,18 +174,20 @@ class CertificadoService:
                 noCertificado = noCertificado + aux[1]
         return noCertificado
 
-    def __getCadenaOriginal(self, arbol):
-        xslt = etree.parse(self._getPathXLST)
+    def __doCadenaOriginal(self, arbol):
+        __xlstpath = CONFIG["service.certificado"]["xlstpath"]
+        xslt = etree.parse(__xlstpath)
         tranformar = etree.XSLT(xslt)
         cadenaOriginal = tranformar(arbol)
-        self.cadena = str(cadenaOriginal)
-        return self.cadena
+        self._cadenaOriginal = str(cadenaOriginal)
+        return self._cadenaOriginal
     
-    def _getCadenaOriginal(self):
-        return self.cadena
+    @property
+    def getCadenaOriginal(self):
+        return self._cadenaOriginal
 
     def __getSello(self, cadenaOriginal):
-        with open (self._getPathKey, 'r') as f:
+        with open (self._getPathPemKey, 'r') as f:
             self.__privateKey = RSA.importKey(f.read())
 
         #Transaccion

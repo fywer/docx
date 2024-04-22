@@ -3,6 +3,7 @@ from pymongo import MongoClient
 #import pymysql
 import logging
 import sys
+from util.config import CONFIG
 
 logging.basicConfig(
     level = logging.DEBUG,
@@ -10,21 +11,20 @@ logging.basicConfig(
     stream = sys.stderr 
 )
 log = logging.getLogger('')
-class MongoDB:
+class MongoAtlas:
     __instancia = None
-    __host = "cluster0"
-    __user = "ifywerz"
-    __password = "5S2ApQdMaod0s6Rl"
     
     def __new__(cls):
         if cls.__instancia is not None:
             return cls.__instancia
         else:
-            #mongodb+srv://ifywerz:5S2ApQdMaod0s6Rl@cluster0.n3iivh4.mongodb.net/?retryWrites=true&w=majority
-            _url = f'mongodb+srv://{cls.__user}:{cls.__password}@{cls.__host}.n3iivh4.mongodb.net/?retryWrites=true&w=majority'
+            __host = CONFIG["server.data"]["host"]
+            __user = CONFIG["server.data"]["user"]
+            __pass = CONFIG["server.data"]["pass"]
+            _url = f'mongodb+srv://{__user}:{__pass}@{__host}.n3iivh4.mongodb.net/?retryWrites=true&w=majority'
             try:
                 cls.__instancia = MongoClient(_url)
-                log.info('Se ha establecido una nueva instancia MongoDB.') 
+                log.info('Se ha establecido una nueva instancia MongoAtlas.') 
                 return cls.__instancia
             except Exception as e:
                 log.warn(f"DRIVER: {e}\n")

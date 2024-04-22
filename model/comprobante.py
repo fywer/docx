@@ -1,6 +1,4 @@
-from typing import Optional
-from datetime import datetime
-from pydantic import BaseModel, Base64Str, Base64Bytes
+from pydantic import BaseModel
 
 class StatusComprobante(BaseModel):
     codigo: str
